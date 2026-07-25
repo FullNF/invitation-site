@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital Wedding Invitations — Choose Your Template</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💍</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Great+Vibes&display=swap" rel="stylesheet">
+<style>
+:root{--maroon:#6d1a2e;--maroon-dark:#4a0f1f;--gold:#c9a24b;--gold-light:#e8d7a8;--cream:#faf6ee;--ink:#5a4632}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Cormorant Garamond',serif;background:var(--cream);color:var(--ink);overflow-x:hidden;min-height:100vh}
+
+.hero{background:linear-gradient(160deg,var(--maroon-dark),var(--maroon) 60%,#7d2036);color:#f6ecd8;text-align:center;padding:80px 20px 120px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 50%, rgba(201,162,75,.1) 0%, transparent 50%), radial-gradient(circle at 80% 30%, rgba(232,207,255,.08) 0%, transparent 50%);pointer-events:none}
+.hero::after{content:'';position:absolute;inset:auto 0 -1px 0;height:50px;background:var(--cream);clip-path:ellipse(60% 100% at 50% 100%)}
+.hero-content{position:relative;z-index:2}
+.hero .script{font-family:'Great Vibes',cursive;font-size:clamp(30px,6vw,44px);color:var(--gold-light);margin-bottom:8px;text-shadow:0 0 20px rgba(201,162,75,.2)}
+.hero h1{font-family:'Cinzel',serif;font-size:clamp(22px,4.6vw,34px);letter-spacing:.14em;margin:0 0 12px;text-shadow:0 2px 10px rgba(0,0,0,.3)}
+.hero p{font-size:clamp(15px,2.4vw,18px);opacity:.88;max-width:560px;margin:0 auto 20px;line-height:1.6}
+.badge{display:inline-block;border:1px solid rgba(232,215,168,.6);border-radius:999px;padding:9px 20px;font-family:'Cinzel',serif;font-size:11.5px;letter-spacing:.22em;color:var(--gold-light);backdrop-filter:blur(8px);background:rgba(246,236,216,.05)}
+
+.grid{max-width:1000px;margin:-40px auto 80px;padding:0 20px;display:grid;gap:32px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));position:relative;z-index:3}
+
+.card{background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 8px 32px rgba(74,15,31,.12);border:1px solid #f0e6d2;display:flex;flex-direction:column;transition:all .35s cubic-bezier(.25,.46,.45,.94);cursor:pointer;position:relative}
+.card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 30% 30%, rgba(201,162,75,.15) 0%, transparent 60%);opacity:0;transition:.35s;z-index:1;pointer-events:none}
+.card:hover::before{opacity:1}
+.card:hover{transform:translateY(-16px);box-shadow:0 24px 56px rgba(74,15,31,.2), 0 0 60px rgba(201,162,75,.15);border-color:rgba(201,162,75,.4)}
+
+.thumb{aspect-ratio:16/10;position:relative;display:flex;align-items:center;justify-content:center;font-family:'Great Vibes',cursive;font-size:36px;color:#f6ecd8;overflow:hidden;background:linear-gradient(135deg,#2a1520 0%,#4a0f1f 100%)}
+.thumb.basic{background:linear-gradient(135deg,#7d2036,#5d1727)}
+.thumb.cinematic{background:radial-gradient(ellipse at 50% 0%,#3a2410,#120a0e 70%)}
+.thumb .ring{position:absolute;inset:16px;border:2px solid rgba(232,215,168,.25);border-radius:16px;transition:.35s}
+.card:hover .thumb .ring{border-color:rgba(201,162,75,.5);box-shadow:0 0 30px rgba(201,162,75,.2)}
+.thumb .tag{position:absolute;top:16px;right:16px;background:var(--gold);color:#3d2a08;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.14em;padding:7px 14px;border-radius:999px;font-weight:600;z-index:2;transition:.35s;box-shadow:0 4px 12px rgba(201,162,75,.3)}
+.card:hover .thumb .tag{transform:scale(1.1)}
+
+.body{padding:28px;display:flex;flex-direction:column;gap:10px;flex:1;position:relative;z-index:2}
+.body h3{font-family:'Cinzel',serif;letter-spacing:.1em;color:var(--maroon);font-size:18px;margin-bottom:4px}
+.body p{font-size:15px;line-height:1.5;color:#7a6650;flex:1;margin:4px 0}
+.features{font-family:'Cinzel',serif;font-size:12px;letter-spacing:.08em;color:#8a6a25;margin:10px 0;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 0}
+.features div{display:flex;gap:6px}
+.features::before{content:'✓ ';color:var(--gold);font-weight:600}
+.price{font-family:'Cinzel',serif;color:var(--maroon);font-size:18px;margin:12px 0 0;padding-top:12px;border-top:1px solid #ecdfc4}
+
+.row{display:flex;gap:10px;margin-top:14px}
+.btn{flex:1;text-align:center;text-decoration:none;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.12em;padding:13px 12px;border-radius:12px;transition:all .25s;border:none;cursor:pointer;font-weight:600}
+.btn.ghost{border:1.5px solid var(--gold);color:#8a6a25;background:transparent}
+.btn.ghost:hover{background:#faf3e2;transform:translateY(-2px);box-shadow:0 6px 16px rgba(201,162,75,.2)}
+.btn.solid{background:linear-gradient(135deg,#86243b 0%,var(--maroon) 100%);color:#f6ecd8;box-shadow:0 8px 20px rgba(109,26,46,.3)}
+.btn.solid:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(109,26,46,.4)}
+
+footer{text-align:center;padding:40px 20px;font-size:14px;color:#98815f;font-style:italic;border-top:1px solid #ecdfc4;margin-top:60px;background:rgba(250,246,238,.5)}
+
+@media(max-width:768px){
+  .hero{padding:60px 16px 80px}
+  .grid{margin:-30px auto 60px;gap:24px;grid-template-columns:1fr}
+  .card{border-radius:18px}
+  .thumb{aspect-ratio:16/12}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-content">
+    <div class="script">Shubh Vivah</div>
+    <h1>DIGITAL WEDDING INVITATIONS</h1>
+    <p>Create beautiful, shareable invitations with custom couple details, dynamic events, love stories, and guest photos. Publish in minutes, celebrate forever.</p>
+    <div class="badge">PROFESSIONAL TEMPLATES · FROM ₹1,499</div>
+  </div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<footer>
+  Choose a design, fill your story, share one link with every guest. Simple, beautiful, forever.
+</footer>
+
+<script>
+fetch('/api/templates').then(r=>r.json()).then(list=>{
+  document.getElementById('grid').innerHTML = list.map(t=>`
+    <div class="card">
+      <div class="thumb ${t.id}">
+        <div class="ring"></div>
+        <span>${t.name}</span>
+        <div class="tag">${t.price}</div>
+      </div>
+      <div class="body">
+        <h3>${t.name.toUpperCase()}</h3>
+        <p>${t.desc}</p>
+        <div class="price">${t.price} · one-time</div>
+        <div class="features">
+          <div>Animations</div>
+          <div>Events</div>
+          <div>Photos</div>
+          <div>RSVP</div>
+        </div>
+        <div class="row">
+          <a class="btn ghost" href="/demo/${t.id}" target="_blank">View Demo →</a>
+          <a class="btn solid" href="/builder.html?template=${t.id}">Customise</a>
+        </div>
+      </div>
+    </div>`).join('');
+});
+</script>
+
+</body>
+</html>

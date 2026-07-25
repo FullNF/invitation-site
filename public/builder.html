@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customise Your Invitation</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💍</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Great+Vibes&display=swap" rel="stylesheet">
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<style>
+:root{--maroon:#6d1a2e;--maroon-dark:#4a0f1f;--gold:#c9a24b;--gold-light:#e8d7a8;--cream:#faf6ee;--ink:#5a4632}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Cormorant Garamond',serif;background:var(--cream);color:var(--ink);min-height:100vh;padding-bottom:110px}
+header{background:linear-gradient(135deg,var(--maroon-dark),var(--maroon));color:#f6ecd8;padding:18px 18px 14px;position:sticky;top:0;z-index:20;box-shadow:0 6px 20px rgba(74,15,31,.25)}
+header .top{display:flex;align-items:center;justify-content:space-between;max-width:640px;margin:0 auto}
+header a{color:var(--gold-light);text-decoration:none;font-size:22px;line-height:1}
+header .t{font-family:'Cinzel',serif;font-size:15px;letter-spacing:.14em}
+header .save{font-size:12.5px;font-style:italic;opacity:.8}
+.steps{display:flex;gap:6px;max-width:640px;margin:12px auto 0}
+.steps i{flex:1;height:4px;border-radius:4px;background:rgba(246,236,216,.25);transition:.3s}
+.steps i.done{background:var(--gold)}
+main{max-width:640px;margin:0 auto;padding:22px 18px}
+.step{display:none}
+.step.on{display:block;animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+h2{font-family:'Cinzel',serif;color:var(--maroon);letter-spacing:.1em;font-size:19px;margin-bottom:4px}
+.sub{font-style:italic;color:#98815f;font-size:15px;margin-bottom:18px}
+.section-title{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.12em;color:#8a6a25;margin:20px 0 14px;padding-top:10px;border-top:1px solid #ecdfc4}
+label{display:block;font-family:'Cinzel',serif;font-size:11.5px;letter-spacing:.14em;color:#8a6a25;margin:14px 0 6px}
+input,select,textarea{width:100%;padding:13px 14px;border:1.5px solid #e5d8bd;border-radius:12px;background:#fff;font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--ink);outline:none;transition:.2s}
+input[type="file"]{padding:8px}
+textarea{min-height:80px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,162,75,.15)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hint{font-size:13.5px;color:#a08a68;font-style:italic;margin-top:5px}
+.card{background:#fff;border:1.5px solid #eee0c8;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 6px 18px rgba(74,15,31,.05)}
+.card.off{opacity:.55}
+.card.off .body{display:none}
+.cardhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cardhead b{font-family:'Cinzel',serif;font-size:14px;letter-spacing:.12em;color:var(--maroon)}
+.switch{position:relative;width:46px;height:26px;flex:0 0 46px}
+.switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:2}
+.switch span{position:absolute;inset:0;border-radius:999px;background:#ddceac;transition:.25s}
+.switch span::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.25s;box-shadow:0 2px 5px rgba(0,0,0,.2)}
+.switch input:checked+span{background:var(--maroon)}
+.switch input:checked+span::after{left:23px}
+.nav{position:fixed;bottom:0;left:0;right:0;background:rgba(250,246,238,.96);backdrop-filter:blur(8px);border-top:1px solid #ecdfc4;padding:12px 16px calc(12px + env(safe-area-inset-bottom));z-index:30}
+.nav .in{max-width:640px;margin:0 auto;display:flex;gap:10px}
+.btn{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.1em;padding:14px 10px;border-radius:13px;border:none;cursor:pointer;transition:.2s}
+.btn.back{flex:0 0 90px;background:#fff;border:1.5px solid #e0d2b4;color:#8a6a25}
+.btn.prev{flex:1;background:#fff;border:1.5px solid var(--gold);color:#8a6a25}
+.btn.prev:active{background:#faf3e2}
+.btn.next{flex:1.4;background:linear-gradient(135deg,#86243b,var(--maroon));color:#f6ecd8;box-shadow:0 8px 20px rgba(109,26,46,.3)}
+.review{background:#fff;border:1.5px solid #eee0c8;border-radius:16px;padding:18px;margin-bottom:14px}
+.review h4{font-family:'Cinzel',serif;font-size:12px;letter-spacing:.16em;color:#8a6a25;margin-bottom:8px}
+.review div{font-size:16px;padding:3px 0}
+.pricebox{background:linear-gradient(150deg,#7d2036,#5d1727);color:#f6ecd8;border-radius:18px;padding:22px;text-align:center;margin:18px 0}
+.pricebox .amt{font-family:'Cinzel',serif;font-size:30px;color:var(--gold-light)}
+.linkbox{background:#fff;border:1.5px dashed var(--gold);border-radius:14px;padding:14px;margin:18px 0;font-size:15px;word-break:break-all;color:var(--maroon)}
+.copybtn,.wabtn{display:inline-block;margin:6px;padding:13px 22px;border-radius:12px;font-family:'Cinzel',serif;font-size:13px;letter-spacing:.1em;text-decoration:none;cursor:pointer;border:none}
+.copybtn{background:var(--gold);color:#3d2a08}
+.wabtn{background:#1faa53;color:#fff}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);background:#3d2a1a;color:#f6ecd8;padding:11px 20px;border-radius:999px;font-size:14.5px;opacity:0;transition:.3s;z-index:99;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.photo-preview{width:100%;height:120px;background:#f0e6d2;border:1px solid #ecdfc4;border-radius:8px;margin-top:8px;object-fit:cover}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <a href="/">←</a>
+    <div class="t">CUSTOMISE</div>
+    <div class="save" id="saveState">saved ✓</div>
+  </div>
+  <div class="steps" id="stepsBar"></div>
+</header>
+
+<main id="main"></main>
+
+<div class="nav"><div class="in">
+  <button class="btn back" id="btnPrev">← BACK</button>
+  <button class="btn prev" id="btnPreview">👁 PREVIEW</button>
+  <button class="btn next" id="btnNext">NEXT →</button>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+localStorage.clear();
+sessionStorage.clear();
+
+const qs = new URLSearchParams(location.search);
+const TPL = qs.get('template') === 'cinematic' ? 'cinematic' : 'basic';
+const KEY = 'wedding_draft_' + TPL;
+
+let D = {
+  groom:'', bride:'', weddingDate:'', venueName:'', venueAddress:'', city:'', whatsapp:'', hashtag:'',
+  showCountdown:true,
+  showBlessings:false,
+  groomParents:{father:'',mother:''}, brideParents:{father:'',mother:''},
+  groomFamily:'Sharma', brideFamily:'Kapoor',
+  events:{
+    mehendi:{on:true,name:'Mehendi Ceremony',date:'',time:'',venue:'',desc:''},
+    haldi:{on:true,name:'Haldi Ceremony',date:'',time:'',venue:'',desc:''},
+    sangeet:{on:true,name:'Sangeet Celebration',date:'',time:'',venue:'',desc:''},
+    wedding:{on:true,name:'Wedding Ceremony',date:'',time:'',venue:'',desc:''}
+  },
+  customEvents:[],
+  showStory:false,
+  howWeMet:'', perfectMorning:'', description:'', customHashtag:'',
+  showGallery:false,
+  photos:{1:null,2:null,3:null,4:null},
+  showMusic:false,
+  musicFile:null,
+  infoCards:{address:{on:false,value:''},parking:{on:false,value:''},registry:{on:false,value:''},stayInfo:{on:false,value:''}},
+  rsvpWhatsapp:'',
+  rsvpMessage:''
+};
+
+let step = 0;
+
+const fld = (label, path, opts={}) => `
+  <label>${label}</label>
+  <input type="${opts.type||'text'}" data-path="${path}" placeholder="${opts.ph||''}" value="${get(path)||''}">
+  ${opts.hint?`<div class="hint">${opts.hint}</div>`:''}`;
+
+const txtarea = (label, path, opts={}) => `
+  <label>${label}</label>
+  <textarea data-path="${path}" placeholder="${opts.ph||''}">${get(path)||''}</textarea>
+  ${opts.hint?`<div class="hint">${opts.hint}</div>`:''}`;
+
+function get(p){ return p.split('.').reduce((o,k)=>o&&o[k], D); }
+function set(p,v){ const ks=p.split('.'); let o=D; for(let i=0;i<ks.length-1;i++) o=o[ks[i]]; o[ks.at(-1)]=v; }
+function save(){ localStorage.setItem(KEY, JSON.stringify(D)); localStorage.setItem(KEY+'_step', step); }
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2400); }
+
+const STEPS = [
+{ title:'THE COUPLE', sub:'Shaadi kiski hai? 💕', html:()=>`
+  ${fld('GROOM\'S NAME','groom',{ph:'e.g. Aarav'})}
+  ${fld('BRIDE\'S NAME','bride',{ph:'e.g. Ishita'})}
+  ${fld('WEDDING DATE','weddingDate',{type:'date'})}
+  ${fld('VENUE NAME','venueName',{ph:'The Grand Utsav'})}
+  ${fld('VENUE CITY','city',{ph:'Jaipur, India'})}
+  ${fld('WHATSAPP NUMBER','whatsapp',{ph:'9811112222'})}
+  ${fld('WEDDING HASHTAG','hashtag',{ph:'#AaravWedsIshita'})}
+  <div class="section-title">COUNTDOWN TIMER</div>
+  <label style="display:flex;align-items:center;gap:10px;margin-top:8px">
+    <span>Show countdown?</span>
+    <label class="switch" style="margin:0"><input type="checkbox" data-toggle-countdown ${D.showCountdown?'checked':''}><span></span></label>
+  </label>` },
+
+{ title:'FAMILY & BLESSINGS', sub:'Parents aur grandparents info', html:()=>`
+  <label style="display:flex;align-items:center;gap:10px">
+    <span>Show blessings section?</span>
+    <label class="switch" style="margin:0"><input type="checkbox" data-toggle-blessings ${D.showBlessings?'checked':''}><span></span></label>
+  </label>
+  <div id="blessDiv" style="display:${D.showBlessings?'block':'none'}">
+    <div class="section-title">GROOM'S SIDE</div>
+    ${fld('Father Name','groomParents.father',{ph:'Mr. Suresh'})}
+    ${fld('Mother Name','groomParents.mother',{ph:'Mrs. Rekha'})}
+    ${fld('Family Surname','groomFamily',{ph:'Malhotra'})}
+    <div class="section-title">BRIDE'S SIDE</div>
+    ${fld('Father Name','brideParents.father',{ph:'Mr. Anil'})}
+    ${fld('Mother Name','brideParents.mother',{ph:'Mrs. Poonam'})}
+    ${fld('Family Surname','brideFamily',{ph:'Bansal'})}
+  </div>` },
+
+{ title:'EVENTS & CEREMONIES', sub:'Choose jo events chahiye', html:()=>`
+  <div id="eventsList">
+  ${['mehendi','haldi','sangeet','wedding'].map(s=>{
+    const ev=D.events[s];
+    return `<div class="card ${ev.on?'':'off'}" id="card_${s}">
+      <div class="cardhead">
+        <b>${s.toUpperCase()}</b>
+        <label class="switch" style="margin:0"><input type="checkbox" data-toggle-event="${s}" ${ev.on?'checked':''}><span></span></label>
+      </div>
+      <div class="body">
+        ${fld('Event Name','events.'+s+'.name',{ph:s+' Ceremony'})}
+        <div class="two">
+          <div>${fld('Date','events.'+s+'.date',{type:'date'})}</div>
+          <div>${fld('Time','events.'+s+'.time',{type:'time'})}</div>
+        </div>
+        ${fld('Venue','events.'+s+'.venue',{ph:'The Grand Utsav'})}
+        ${fld('Description','events.'+s+'.desc',{ph:'One-line desc'})}
+      </div>
+    </div>`;
+  }).join('')}
+  </div>` },
+
+{ title:'STORY, GALLERY & MUSIC', sub:'Personal touches', html:()=>`
+  <div class="section-title">STORY</div>
+  <label style="display:flex;align-items:center;gap:10px">
+    <span>Show story section?</span>
+    <label class="switch" style="margin:0"><input type="checkbox" data-toggle-story ${D.showStory?'checked':''}><span></span></label>
+  </label>
+  <div id="storyDiv" style="display:${D.showStory?'block':'none'}">
+    ${fld('How We Met','howWeMet',{ph:'At a wedding'})}
+    ${fld('Perfect Morning','perfectMorning',{ph:'Coffee & cuddles'})}
+    ${txtarea('Our Story','description',{ph:'Tell us your love story...'})}
+    ${fld('Custom Hashtag','customHashtag',{ph:'#OurLoveStory'})}
+  </div>
+
+  <div class="section-title">GALLERY (4 PHOTOS)</div>
+  <label style="display:flex;align-items:center;gap:10px">
+    <span>Show photo gallery?</span>
+    <label class="switch" style="margin:0"><input type="checkbox" data-toggle-gallery ${D.showGallery?'checked':''}><span></span></label>
+  </label>
+  <div id="galleryDiv" style="display:${D.showGallery?'block':'none'}">
+    ${[1,2,3,4].map(i => `
+      <div style="margin-bottom:16px">
+        <label>PHOTO ${i}</label>
+        <input type="file" data-photo="${i}" accept="image/*">
+        ${D.photos[i] ? '<img class="photo-preview" src="' + D.photos[i] + '">' : ''}
+      </div>
+    `).join('')}
+  </div>
+
+  <div class="section-title">MUSIC (BACKGROUND)</div>
+  <label style="display:flex;align-items:center;gap:10px">
+    <span>Upload custom music?</span>
+    <label class="switch" style="margin:0"><input type="checkbox" data-toggle-music ${D.showMusic?'checked':''}><span></span></label>
+  </label>
+  <div id="musicDiv" style="display:${D.showMusic?'block':'none'}">
+    <label>MUSIC FILE (MP3/WAV/OGG)</label>
+    <input type="file" id="musicFile" accept="audio/*">
+    <div class="hint">Optional - leave blank to use default music</div>
+  </div>` },
+
+{ title:'INFO CARDS & RSVP', sub:'Final details', html:()=>`
+  <div class="section-title">INFO CARDS</div>
+  <div class="card">
+    <div class="cardhead"><b>ADDRESS</b><label class="switch" style="margin:0"><input type="checkbox" data-toggle-info="address" ${D.infoCards.address.on?'checked':''}><span></span></label></div>
+    <div class="body" style="display:${D.infoCards.address.on?'block':'none'}"><textarea data-path="infoCards.address.value" placeholder="Venue address">${D.infoCards.address.value}</textarea></div>
+  </div>
+  <div class="card">
+    <div class="cardhead"><b>PARKING</b><label class="switch" style="margin:0"><input type="checkbox" data-toggle-info="parking" ${D.infoCards.parking.on?'checked':''}><span></span></label></div>
+    <div class="body" style="display:${D.infoCards.parking.on?'block':'none'}"><textarea data-path="infoCards.parking.value" placeholder="Parking info">${D.infoCards.parking.value}</textarea></div>
+  </div>
+  <div class="card">
+    <div class="cardhead"><b>GIFT REGISTRY</b><label class="switch" style="margin:0"><input type="checkbox" data-toggle-info="registry" ${D.infoCards.registry.on?'checked':''}><span></span></label></div>
+    <div class="body" style="display:${D.infoCards.registry.on?'block':'none'}"><input type="url" data-path="infoCards.registry.value" placeholder="https://registry.com" value="${D.infoCards.registry.value}"></div>
+  </div>
+  <div class="card">
+    <div class="cardhead"><b>STAY INFO</b><label class="switch" style="margin:0"><input type="checkbox" data-toggle-info="stayInfo" ${D.infoCards.stayInfo.on?'checked':''}><span></span></label></div>
+    <div class="body" style="display:${D.infoCards.stayInfo.on?'block':'none'}"><textarea data-path="infoCards.stayInfo.value" placeholder="Hotel info">${D.infoCards.stayInfo.value}</textarea></div>
+  </div>
+
+  <div class="section-title">RSVP</div>
+  ${fld('RSVP WhatsApp Number','rsvpWhatsapp',{ph:'9811112222'})}
+  ${fld('RSVP Message','rsvpMessage',{ph:'I\'ll be attending!'})}` },
+
+{ title:'REVIEW & PAY', sub:'Final check', html:()=>`
+  <div class="review"><h4>COUPLE</h4><div>${D.groom||'—'} ❤ ${D.bride||'—'}</div></div>
+  <div class="review"><h4>VENUE</h4><div>${D.venueName||'—'}, ${D.city||'—'}</div></div>
+  <div class="review"><h4>GALLERY</h4><div>${D.showGallery ? '✓ Enabled' : '✗ Disabled'}</div></div>
+  <div class="review"><h4>STORY</h4><div>${D.showStory ? '✓ Enabled' : '✗ Disabled'}</div></div>
+  <div class="pricebox">
+    <div style="font-size:24px;color:#c9a24b">₹ ${TPL==='cinematic'?'2,499':'1,499'}</div>
+  </div>
+  <button class="btn next" id="payBtn" style="width:100%;padding:17px">💳 PAY & PUBLISH</button>` },
+];
+
+function bind(){
+  document.querySelectorAll('input[data-path]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{ set(inp.dataset.path, inp.value); save(); });
+  });
+  document.querySelectorAll('textarea[data-path]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{ set(inp.dataset.path, inp.value); save(); });
+  });
+  
+  document.querySelectorAll('input[data-toggle-countdown]').forEach(t=>{
+    t.addEventListener('change', ()=>{ D.showCountdown=t.checked; save(); });
+  });
+  document.querySelectorAll('input[data-toggle-blessings]').forEach(t=>{
+    t.addEventListener('change', ()=>{ D.showBlessings=t.checked; save(); draw(); });
+  });
+  document.querySelectorAll('input[data-toggle-event]').forEach(t=>{
+    t.addEventListener('change', ()=>{ D.events[t.dataset.toggleEvent].on=t.checked; save(); draw(); });
+  });
+  document.querySelectorAll('input[data-toggle-story]').forEach(t=>{
+    t.addEventListener('change', ()=>{ D.showStory=t.checked; save(); draw(); });
+  });
+  document.querySelectorAll('input[data-toggle-gallery]').forEach(t=>{
+    t.addEventListener('change', ()=>{ D.showGallery=t.checked; save(); draw(); });
+  });
+  document.querySelectorAll('input[data-toggle-music]').forEach(t=>{
+    t.addEventListener('change', ()=>{ D.showMusic=t.checked; save(); draw(); });
+  });
+  document.querySelectorAll('input[data-toggle-info]').forEach(t=>{
+    t.addEventListener('change', ()=>{ D.infoCards[t.dataset.toggleInfo].on=t.checked; save(); draw(); });
+  });
+  
+  document.querySelectorAll('input[data-photo]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      if(inp.files[0]){
+        const reader = new FileReader();
+        reader.onload = (e)=>{ D.photos[inp.dataset.photo]=e.target.result; save(); draw(); };
+        reader.readAsDataURL(inp.files[0]);
+      }
+    });
+  });
+  
+  const musicFile = document.getElementById('musicFile');
+  if(musicFile){
+    musicFile.addEventListener('change', ()=>{
+      if(musicFile.files[0]){
+        const reader = new FileReader();
+        reader.onload = (e)=>{ D.musicFile=e.target.result; save(); };
+        reader.readAsDataURL(musicFile.files[0]);
+      }
+    });
+  }
+}
+
+function draw(){
+  document.getElementById('stepsBar').innerHTML = STEPS.map((_,i)=>`<i class="${i<=step?'done':''}"></i>`).join('');
+  const s = STEPS[step];
+  document.getElementById('main').innerHTML = `<div class="step on"><h2>${s.title}</h2><div class="sub">${s.sub}</div>${s.html()}</div>`;
+  document.getElementById('btnPrev').style.visibility = step? 'visible':'hidden';
+  document.getElementById('btnNext').style.display = step===STEPS.length-1 ? 'none':'block';
+  bind();
+  if(step===STEPS.length-1) bindPay();
+  window.scrollTo(0,0);
+}
+
+async function bindPay(){
+  document.getElementById('payBtn').onclick = async ()=>{
+    if(!D.groom.trim()||!D.bride.trim()) return toast('Couple names fill kar do!');
+    const r = await fetch('/api/create-order',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({template:TPL, data:D})});
+    const o = await r.json();
+    if(o.error) return toast('Order failed: '+o.error);
+    new Razorpay({
+      key:o.keyId, amount:o.amount, currency:'INR', order_id:o.orderId,
+      name:'Wedding Invitation', description:'Beautiful shaadi invitation',
+      theme:{color:'#6d1a2e'},
+      handler: async (resp)=>{
+        const v = await fetch('/api/verify-payment',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({internalId:o.internalId, ...resp})}).then(x=>x.json());
+        if(v.success){
+          document.getElementById('main').innerHTML = `
+            <div style="text-align:center;padding:40px 10px">
+              <div style="font-family:'Great Vibes',cursive;font-size:40px;color:#6d1a2e">🎉 Published!</div>
+              <div class="linkbox">${window.location.origin}/invite/${v.inviteId}</div>
+              <button class="copybtn" onclick="navigator.clipboard.writeText('${window.location.origin}/invite/${v.inviteId}');toast('Copied!')">📋 COPY</button>
+              <a href="https://wa.me/?text=${encodeURIComponent('My wedding invitation: '+window.location.origin+'/invite/'+v.inviteId)}" class="wabtn">📱 SHARE</a>
+            </div>`;
+          document.querySelector('.nav').style.display='none';
+        }
+      }
+    }).open();
+  };
+}
+
+document.getElementById('btnPrev').onclick = ()=>{ if(step>0){step--;draw();} };
+document.getElementById('btnNext').onclick = ()=>{
+  if(step===0 && (!D.groom.trim()||!D.bride.trim())) return toast('Names fill kar do!');
+  if(step<STEPS.length-1){step++;draw();}
+};
+document.getElementById('btnPreview').onclick = async ()=>{
+  save();
+  const r = await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({template:TPL, data:D})});
+  const j = await r.json();
+  if(j.token) window.open('/preview/'+j.token, '_blank');
+};
+
+draw();
+</script>
+</body>
+</html>

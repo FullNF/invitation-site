@@ -1,0 +1,24 @@
+{
+  "name": "shaadipath-builder",
+  "version": "1.0.0",
+  "description": "ShaadiPath-style Wedding Invitation Builder with Razorpay integration",
+  "main": "server.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["wedding", "invitation", "razorpay", "builder"],
+  "author": "Ayush Singh",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^4.22.2",
+    "multer": "^2.2.0",
+    "nanoid": "^3.3.16",
+    "razorpay": "^2.9.8"
+  }
+}
