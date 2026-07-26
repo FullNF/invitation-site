@@ -3,13 +3,30 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node"      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**/*",
+      "use": "@vercel/static"      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/media/(.*)",
+      "dest": "/media/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/server.js"
     }
-  ]
+  ],
+  "env": {
+    "RAZORPAY_KEY_ID": "rzp_test_TI3ovy4bJS8i74",
+    "RAZORPAY_KEY_SECRET": "4bDap7mtM5sezP5eT1GgE4Ym",
+    "NODE_ENV": "production"
+  }
 }
