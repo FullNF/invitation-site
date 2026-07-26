@@ -3,22 +3,10 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node"      "use": "@vercel/node"
-    },
-    {
-      "src": "public/**/*",
-      "use": "@vercel/static"      "use": "@vercel/static"
+      "use": "@vercel/node"
     }
   ],
   "routes": [
-    {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/media/(.*)",
-      "dest": "/media/$1"
-    },
     {
       "src": "/(.*)",
       "dest": "/server.js"
