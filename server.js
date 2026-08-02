@@ -21,8 +21,12 @@ const { render } = require('./lib/render');
 const app = express();
 app.use(express.json({ limit: '60mb' }));
 
-/* ---- media handling: save base64 photos/music to files, return public URLs ---- */
-const MEDIA_DIR = path.join(__dirname, 'data', 'media');
+/* ---- media handling: save base64 photos/music to files, return public URLs ----
+ * Vercel's deployed filesystem is read-only outside /tmp, and /tmp is wiped
+ * between cold starts — fine for a demo, but drafts/invites won't survive
+ * long-term there. Use /tmp on Vercel, the local data/ dir otherwise. */
+const DATA_ROOT = process.env.VERCEL ? '/tmp/data' : path.join(__dirname, 'data');
+const MEDIA_DIR = path.join(DATA_ROOT, 'media');
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
 function saveMedia(id, data) {
@@ -76,8 +80,7 @@ const TEMPLATE_META = {
   cinematic: { name: 'Midnight Cinema',  desc: 'Dark luxury · pinned horizontal event scroll · glowing gold', price: '₹2,499' }
 };
 
-const DATA_DIR = path.join(__dirname, 'data');
-const INVITES_DIR = path.join(DATA_DIR, 'invites');
+const INVITES_DIR = path.join(DATA_ROOT, 'invites');
 fs.mkdirSync(INVITES_DIR, { recursive: true });
 
 /* in-memory drafts + orders (drafts persist client-side via localStorage too) */
@@ -268,11 +271,18 @@ app.get('/invite/:id', (req, res) => {
   res.send(render(rec.template, rec.data, { photoUrls: rec.media?.photoUrls || [], musicUrl: rec.media?.musicUrl || null }));
 });
 
-app.listen(PORT, () => {
-  const mode = process.env.NODE_ENV === 'test' ? 'TEST (Razorpay Sandbox)' : 'LIVE (Production)';
-  console.log(`\n✨ Wedding Invitation Builder running\n`);
-  console.log(`   URL: http://localhost:${PORT}`);
-  console.log(`   Mode: ${mode}`);
-  console.log(`   Key: ${RZP_KEY.substring(0, 20)}...`);
-  console.log(`\n   Test card: 4111 1111 1111 1111 | Expiry: 12/25 | CVV: 123\n`);
-});
+// Vercel's @vercel/node runtime imports this file and calls the exported
+// app directly as the request handler — it must not bind a port itself.
+// Only listen when run directly (local dev / traditional hosting).
+if (require.main === module) {
+  app.listen(PORT, () => {
+    const mode = process.env.NODE_ENV === 'test' ? 'TEST (Razorpay Sandbox)' : 'LIVE (Production)';
+    console.log(`\n✨ Wedding Invitation Builder running\n`);
+    console.log(`   URL: http://localhost:${PORT}`);
+    console.log(`   Mode: ${mode}`);
+    console.log(`   Key: ${RZP_KEY.substring(0, 20)}...`);
+    console.log(`\n   Test card: 4111 1111 1111 1111 | Expiry: 12/25 | CVV: 123\n`);
+  });
+}
+
+module.exports = app;
