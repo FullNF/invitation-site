@@ -129,8 +129,45 @@ const txtarea = (label, path, opts={}) => `
 
 function get(p){ return p.split('.').reduce((o,k)=>o&&o[k], D); }
 function set(p,v){ const ks=p.split('.'); let o=D; for(let i=0;i<ks.length-1;i++) o=o[ks[i]]; o[ks.at(-1)]=v; }
-function save(){ localStorage.setItem(KEY, JSON.stringify(D)); localStorage.setItem(KEY+'_step', step); }
+function save(){
+  try {
+    // photos/musicFile are base64 and can run several MB each; keeping them out of
+    // localStorage avoids exceeding the browser's per-origin quota, which used to
+    // throw uncaught and silently abort whichever handler called save() first
+    // (every toggle switch's re-render, the Preview button, etc.)
+    const { photos, musicFile, ...persisted } = D;
+    localStorage.setItem(KEY, JSON.stringify(persisted));
+    localStorage.setItem(KEY+'_step', step);
+  } catch (e) { console.warn('draft autosave skipped:', e); }
+}
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2400); }
+
+// Phone photos routinely run 5-15MB; resizing to a sane display size before
+// base64-encoding keeps the draft small enough for localStorage and for the
+// server's request body (Vercel caps serverless function bodies at ~4.5MB).
+function compressImage(file, maxDim=1600, quality=0.82){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onerror = () => reject(new Error('invalid image'));
+      img.onload = ()=>{
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width*scale); height = Math.round(height*scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 const STEPS = [
 { title:'THE COUPLE', sub:'Shaadi kiski hai? 💕', html:()=>`
@@ -289,23 +326,31 @@ function bind(){
   });
   
   document.querySelectorAll('input[data-photo]').forEach(inp=>{
-    inp.addEventListener('change', ()=>{
-      if(inp.files[0]){
-        const reader = new FileReader();
-        reader.onload = (e)=>{ D.photos[inp.dataset.photo]=e.target.result; save(); draw(); };
-        reader.readAsDataURL(inp.files[0]);
+    inp.addEventListener('change', async ()=>{
+      const file = inp.files[0];
+      if(!file) return;
+      if(!file.type.startsWith('image/')) return toast('Please choose an image file');
+      try {
+        D.photos[inp.dataset.photo] = await compressImage(file);
+        save(); draw();
+      } catch (e) {
+        toast('Could not process that photo — try a different one');
       }
     });
   });
-  
+
   const musicFile = document.getElementById('musicFile');
   if(musicFile){
     musicFile.addEventListener('change', ()=>{
-      if(musicFile.files[0]){
-        const reader = new FileReader();
-        reader.onload = (e)=>{ D.musicFile=e.target.result; save(); };
-        reader.readAsDataURL(musicFile.files[0]);
-      }
+      const file = musicFile.files[0];
+      if(!file) return;
+      // stays well under Vercel's ~4.5MB request-body cap once base64-encoded
+      // alongside up to 4 compressed photos (~0.25MB each) in the same JSON POST
+      if(file.size > 2.5*1024*1024){ toast('Music file too large — please pick one under 2.5MB'); musicFile.value=''; return; }
+      const reader = new FileReader();
+      reader.onload = (e)=>{ D.musicFile=e.target.result; save(); };
+      reader.onerror = ()=> toast('Could not read that music file');
+      reader.readAsDataURL(file);
     });
   }
 }
@@ -324,27 +369,36 @@ function draw(){
 async function bindPay(){
   document.getElementById('payBtn').onclick = async ()=>{
     if(!D.groom.trim()||!D.bride.trim()) return toast('Couple names fill kar do!');
-    const r = await fetch('/api/create-order',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({template:TPL, data:D})});
-    const o = await r.json();
+    let o;
+    try {
+      const r = await fetch('/api/create-order',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({template:TPL, data:D})});
+      if(!r.ok) return toast('Order failed — try smaller photos/music');
+      o = await r.json();
+    } catch (e) { return toast('Order failed — check your connection'); }
     if(o.error) return toast('Order failed: '+o.error);
     new Razorpay({
       key:o.keyId, amount:o.amount, currency:'INR', order_id:o.orderId,
       name:'Wedding Invitation', description:'Beautiful shaadi invitation',
       theme:{color:'#6d1a2e'},
       handler: async (resp)=>{
-        const v = await fetch('/api/verify-payment',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({internalId:o.internalId, ...resp})}).then(x=>x.json());
-        if(v.success){
-          document.getElementById('main').innerHTML = `
-            <div style="text-align:center;padding:40px 10px">
-              <div style="font-family:'Great Vibes',cursive;font-size:40px;color:#6d1a2e">🎉 Published!</div>
-              <div class="linkbox">${window.location.origin}/invite/${v.inviteId}</div>
-              <button class="copybtn" onclick="navigator.clipboard.writeText('${window.location.origin}/invite/${v.inviteId}');toast('Copied!')">📋 COPY</button>
-              <a href="https://wa.me/?text=${encodeURIComponent('My wedding invitation: '+window.location.origin+'/invite/'+v.inviteId)}" class="wabtn">📱 SHARE</a>
-            </div>`;
-          document.querySelector('.nav').style.display='none';
-        }
+        try {
+          const vr = await fetch('/api/verify-payment',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({internalId:o.internalId, ...resp})});
+          const v = await vr.json();
+          if(v.success){
+            document.getElementById('main').innerHTML = `
+              <div style="text-align:center;padding:40px 10px">
+                <div style="font-family:'Great Vibes',cursive;font-size:40px;color:#6d1a2e">🎉 Published!</div>
+                <div class="linkbox">${window.location.origin}/invite/${v.inviteId}</div>
+                <button class="copybtn" onclick="navigator.clipboard.writeText('${window.location.origin}/invite/${v.inviteId}');toast('Copied!')">📋 COPY</button>
+                <a href="https://wa.me/?text=${encodeURIComponent('My wedding invitation: '+window.location.origin+'/invite/'+v.inviteId)}" class="wabtn">📱 SHARE</a>
+              </div>`;
+            document.querySelector('.nav').style.display='none';
+          } else {
+            toast('Payment verification failed — contact support');
+          }
+        } catch (e) { toast('Payment verification failed — check your connection'); }
       }
     }).open();
   };
@@ -357,10 +411,13 @@ document.getElementById('btnNext').onclick = ()=>{
 };
 document.getElementById('btnPreview').onclick = async ()=>{
   save();
-  const r = await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({template:TPL, data:D})});
-  const j = await r.json();
-  if(j.token) window.open('/preview/'+j.token, '_blank');
+  try {
+    const r = await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({template:TPL, data:D})});
+    if(!r.ok) return toast('Preview failed — try smaller photos/music');
+    const j = await r.json();
+    if(j.token) window.open('/preview/'+j.token, '_blank');
+  } catch (e) { toast('Preview failed — check your connection'); }
 };
 
 draw();
