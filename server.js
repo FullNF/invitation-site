@@ -17,7 +17,7 @@ const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
 const multer = require('multer');
-const { put, list } = require('@vercel/blob');
+const { put, list, del } = require('@vercel/blob');
 const { nanoid } = require('nanoid');
 const Razorpay = require('razorpay');
 const { OAuth2Client } = require('google-auth-library');
@@ -91,7 +91,32 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const SESSION_SECRET = process.env.SESSION_SECRET; // must be stable across instances — see note below
 const oauthClient = (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) ? new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) : null;
 
-function adminOrigin(req) { return `${req.protocol}://${req.get('host')}`; }
+function requestOrigin(req) { return `${req.protocol}://${req.get('host')}`; }
+
+/* ---- Telegram alerts: leads, previews, purchases. Best-effort — a failed
+ * send never blocks the actual request, and it's a no-op if unconfigured. ---- */
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const escHtml = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+async function sendTelegramAlert(text) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true })
+    });
+  } catch (error) {
+    console.error('Telegram alert failed:', error.message);
+  }
+}
+// logs to the console as before, and also pushes a Telegram alert for
+// genuine server-side failures (Blob/Razorpay/OAuth issues) — not used for
+// routine 400s like bad input, only real bugs worth waking up for
+async function alertError(label, error) {
+  console.error(`${label}:`, error);
+  await sendTelegramAlert(`🚨 <b>Error: ${escHtml(label)}</b>\n${escHtml(error?.message || String(error))}`);
+}
 
 // Lightweight signed session cookie (HMAC, like the Razorpay signature check
 // below) instead of a session store — Vercel functions share no memory across
@@ -184,7 +209,7 @@ app.post('/api/upload-music', (req, res) => {
       });
       res.json({ url: blob.url });
     } catch (e) {
-      console.error('Music upload error:', e);
+      await alertError('Music upload failed', e);
       res.status(502).json({ error: 'Upload failed — try again' });
     }
   });
@@ -201,9 +226,15 @@ app.post('/api/lead', async (req, res) => {
     await put(`leads/${id}.json`, JSON.stringify({
       id, phone: cleanPhone, groom: groom || '', bride: bride || '', template: template || '', ts: Date.now()
     }), { access: 'public', contentType: 'application/json', addRandomSuffix: false });
+    await sendTelegramAlert(
+      `📞 <b>New Lead</b>\n` +
+      `Couple: ${escHtml(groom) || '—'} &amp; ${escHtml(bride) || '—'}\n` +
+      `Phone: <a href="https://wa.me/${cleanPhone}">${cleanPhone}</a>\n` +
+      `Template: ${escHtml(TEMPLATE_META[template]?.name || template || '—')}`
+    );
     res.json({ success: true });
   } catch (error) {
-    console.error('Lead capture error:', error);
+    await alertError('Lead capture failed', error);
     res.status(500).json({ error: 'Could not save' });
   }
 });
@@ -226,7 +257,7 @@ app.get('/admin/auth/start', (req, res) => {
   if (!oauthClient) return res.status(503).send('Admin login isn\'t configured yet.');
   const url = oauthClient.generateAuthUrl({
     scope: ['openid', 'email', 'profile'],
-    redirect_uri: `${adminOrigin(req)}/admin/auth/callback`,
+    redirect_uri: `${requestOrigin(req)}/admin/auth/callback`,
     prompt: 'select_account'
   });
   res.redirect(url);
@@ -236,7 +267,7 @@ app.get('/admin/auth/callback', async (req, res) => {
   if (!oauthClient) return res.status(503).send('Admin login isn\'t configured yet.');
   try {
     const { code } = req.query;
-    const redirect_uri = `${adminOrigin(req)}/admin/auth/callback`;
+    const redirect_uri = `${requestOrigin(req)}/admin/auth/callback`;
     const { tokens } = await oauthClient.getToken({ code, redirect_uri });
     const ticket = await oauthClient.verifyIdToken({ idToken: tokens.id_token, audience: GOOGLE_CLIENT_ID });
     const payload = ticket.getPayload();
@@ -249,7 +280,7 @@ app.get('/admin/auth/callback', async (req, res) => {
     res.setHeader('Set-Cookie', `admin_session=${encodeURIComponent(session)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 3600}`);
     res.redirect('/admin');
   } catch (error) {
-    console.error('Admin OAuth callback error:', error);
+    await alertError('Admin OAuth callback failed', error);
     res.status(500).send('Login failed — try again.');
   }
 });
@@ -283,9 +314,39 @@ app.get('/api/admin/data', requireAdmin, async (req, res) => {
       drafts: draftsArr.sort((a, b) => b.ts - a.ts)
     });
   } catch (error) {
-    console.error('Admin data error:', error);
+    await alertError('Admin data load failed', error);
     res.status(500).json({ error: 'Failed to load admin data' });
   }
+});
+
+async function deleteBlobByPrefix(prefix) {
+  const { blobs } = await list({ prefix, limit: 1 });
+  if (blobs.length) await del(blobs[0].url);
+  return blobs.length > 0;
+}
+
+app.delete('/api/admin/lead/:id', requireAdmin, async (req, res) => {
+  try {
+    const found = await deleteBlobByPrefix(`leads/${req.params.id}.json`);
+    res.json({ success: true, found });
+  } catch (error) {
+    await alertError('Admin lead delete failed', error);
+    res.status(500).json({ error: 'Delete failed' });
+  }
+});
+
+app.delete('/api/admin/invite/:id', requireAdmin, async (req, res) => {
+  try {
+    const found = await deleteBlobByPrefix(`invites/${req.params.id}.json`);
+    res.json({ success: true, found });
+  } catch (error) {
+    await alertError('Admin invite delete failed', error);
+    res.status(500).json({ error: 'Delete failed' });
+  }
+});
+
+app.delete('/api/admin/draft/:token', requireAdmin, (req, res) => {
+  res.json({ success: true, found: drafts.delete(req.params.token) });
 });
 
 /* save draft -> preview token */
@@ -298,9 +359,14 @@ app.post('/api/preview', async (req, res) => {
     drafts.set(token, { template, data, media, ts: Date.now() });
     // GC old drafts (>2h)
     for (const [k, v] of drafts) if (Date.now() - v.ts > 72e5) drafts.delete(k);
+    await sendTelegramAlert(
+      `👀 <b>Preview Generated</b>\n` +
+      `Couple: ${escHtml(data?.groom) || '—'} &amp; ${escHtml(data?.bride) || '—'}\n` +
+      `Template: ${escHtml(TEMPLATE_META[template]?.name || template)}`
+    );
     res.json({ token });
   } catch (error) {
-    console.error('Preview save error:', error);
+    await alertError('Preview save failed', error);
     res.status(502).json({ error: 'Could not save preview', detail: error.message });
   }
 });
@@ -370,7 +436,7 @@ app.post('/api/create-order', async (req, res) => {
       internalId
     });
   } catch (error) {
-    console.error('Order creation error:', error);
+    await alertError('Order creation failed', error);
     res.status(502).json({ error: 'Failed to create order', detail: error.message });
   }
 });
@@ -424,13 +490,22 @@ app.post('/api/verify-payment', async (req, res) => {
     const inviteId = await publishInvitation(orderRec);
     orderRec.inviteId = inviteId;
 
+    await sendTelegramAlert(
+      `🎉 <b>New Purchase!</b>\n` +
+      `Couple: ${escHtml(orderRec.data?.groom) || '—'} &amp; ${escHtml(orderRec.data?.bride) || '—'}\n` +
+      `Template: ${escHtml(TEMPLATE_META[orderRec.template]?.name || orderRec.template)}\n` +
+      `Amount: ₹${(orderRec.amount / 100).toLocaleString('en-IN')}\n` +
+      `Invite: ${requestOrigin(req)}/invite/${inviteId}\n` +
+      `Payment ID: ${escHtml(razorpay_payment_id)}`
+    );
+
     res.json({
       success: true,
       inviteId,
       url: `/invite/${inviteId}`
     });
   } catch (error) {
-    console.error('Payment verification error:', error);
+    await alertError('Payment verification failed', error);
     res.status(500).json({ error: 'Verification failed', detail: error.message });
   }
 });
@@ -466,9 +541,17 @@ app.get('/invite/:id', async (req, res) => {
     const rec = await fetch(blobs[0].url).then(r => r.json());
     res.send(render(rec.template, rec.data, { photoUrls: rec.media?.photoUrls || [], musicUrl: rec.media?.musicUrl || null }));
   } catch (error) {
-    console.error('Invite load error:', error);
+    await alertError('Invite load failed', error);
     res.status(500).send('Something went wrong loading this invitation.');
   }
+});
+
+// Safety net for anything that throws without being caught above (e.g. a bug
+// in a route that skipped its own try/catch) — must be registered last.
+app.use((err, req, res, next) => {
+  alertError(`Unhandled error on ${req.method} ${req.path}`, err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: 'Something went wrong' });
 });
 
 // Vercel's @vercel/node runtime imports this file and calls the exported

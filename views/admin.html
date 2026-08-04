@@ -30,6 +30,9 @@ a.wa{color:#1faa53;text-decoration:none;font-weight:600}
 a.link{color:var(--maroon);text-decoration:none;font-weight:600;word-break:break-all}
 .count{background:rgba(255,255,255,.15);border-radius:999px;padding:2px 9px;font-size:11px;margin-left:6px}
 .loading{padding:60px;text-align:center;color:#a08a68;font-style:italic}
+.del{background:none;border:1.5px solid #d9b8bc;color:#a33a4a;font-family:'Cinzel',serif;font-size:10.5px;letter-spacing:.06em;padding:6px 12px;border-radius:8px;cursor:pointer}
+.del:hover{background:#fbeaec}
+.del:disabled{opacity:.5;cursor:default}
 </style>
 </head>
 <body>
@@ -59,11 +62,29 @@ const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'
 const tplPill = t => t ? `<span class="pill ${esc(t)}">${t === 'cinematic' ? 'Midnight Cinema' : 'Royal Heritage'}</span>` : '—';
 const waLink = phone => phone ? `<a class="wa" href="https://wa.me/${phone.replace(/\D/g,'')}" target="_blank" rel="noopener">${esc(phone)} ↗</a>` : '—';
 
-function renderTable(el, rows, cols, emptyMsg) {
-  if (!rows.length) { el.innerHTML = `<tr><td class="empty">${emptyMsg}</td></tr>`; return; }
+function renderTable(el, rows, cols, emptyMsg, colspan) {
+  if (!rows.length) { el.innerHTML = `<tr><td class="empty" colspan="${colspan||1}">${emptyMsg}</td></tr>`; return; }
   el.innerHTML = `<tr>${cols.map(c => `<th>${c.label}</th>`).join('')}</tr>` +
     rows.map(r => `<tr>${cols.map(c => `<td>${c.render(r)}</td>`).join('')}</tr>`).join('');
 }
+
+// type: 'lead' | 'invite' | 'draft'; id is the record id (or draft token)
+async function deleteRecord(type, id, btn) {
+  const scary = type === 'invite' ? 'This permanently deletes a PAID invitation — the couple\'s link will stop working. Are you sure?' : 'Remove this entry?';
+  if (!confirm(scary)) return;
+  btn.disabled = true; btn.textContent = '…';
+  const endpoint = type === 'draft' ? `/api/admin/draft/${id}` : `/api/admin/${type}/${id}`;
+  try {
+    const r = await fetch(endpoint, { method: 'DELETE' });
+    if (!r.ok) throw new Error('failed');
+    btn.closest('tr').remove();
+  } catch (e) {
+    btn.disabled = false; btn.textContent = 'Delete';
+    alert('Delete failed — try again.');
+  }
+}
+window.deleteRecord = deleteRecord;
+const delBtn = (type, id) => `<button class="del" onclick="deleteRecord('${type}','${esc(id)}',this)">Delete</button>`;
 
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
@@ -88,14 +109,16 @@ fetch('/api/admin/data').then(r => {
     { label: 'Couple', render: r => `${esc(r.groom)||'—'} &amp; ${esc(r.bride)||'—'}` },
     { label: 'Phone', render: r => waLink(r.phone) },
     { label: 'Template', render: r => tplPill(r.template) },
-  ], 'No leads yet — captured when someone enters a phone number in the builder without completing payment.');
+    { label: '', render: r => delBtn('lead', r.id) },
+  ], 'No leads yet — captured when someone enters a phone number in the builder without completing payment.', 5);
 
   renderTable(document.getElementById('tblDrafts'), d.drafts, [
     { label: 'When', render: r => fmtDate(r.ts) },
     { label: 'Couple', render: r => `${esc(r.groom)||'—'} &amp; ${esc(r.bride)||'—'}` },
     { label: 'Phone', render: r => waLink(r.phone) },
     { label: 'Template', render: r => tplPill(r.template) },
-  ], 'No active previews. Note: this list only reflects recent activity on the current server instance — it is not a permanent record.');
+    { label: '', render: r => delBtn('draft', r.token) },
+  ], 'No active previews. Note: this list only reflects recent activity on the current server instance — it is not a permanent record.', 5);
 
   renderTable(document.getElementById('tblInvites'), d.invites, [
     { label: 'Paid At', render: r => fmtDate(new Date(r.paidAt).getTime()) },
@@ -104,7 +127,8 @@ fetch('/api/admin/data').then(r => {
     { label: 'Amount', render: r => '₹' + (r.amount / 100).toLocaleString('en-IN') },
     { label: 'Invite Link', render: r => `<a class="link" href="/invite/${r.id}" target="_blank">/invite/${r.id} ↗</a>` },
     { label: 'Razorpay Payment', render: r => esc(r.razorpayPaymentId) || '—' },
-  ], 'No purchases yet.');
+    { label: '', render: r => delBtn('invite', r.id) },
+  ], 'No purchases yet.', 7);
 }).catch(() => {
   document.getElementById('loading').textContent = 'Failed to load — refresh to try again.';
 });
