@@ -74,10 +74,21 @@ if (!RZP_KEY || !RZP_SECRET) {
 
 const rzp = new Razorpay({ key_id: RZP_KEY, key_secret: RZP_SECRET });
 
-const PRICES = { basic: 149900, cinematic: 249900 }; // paise
+const PRICES = { basic: 89900, cinematic: 149900 }; // paise
 const TEMPLATE_META = {
-  basic:     { name: 'Royal Heritage',   desc: 'Envelope opening · scratch-card save-the-date · maroon & gold classic', price: '₹1,499' },
-  cinematic: { name: 'Midnight Cinema',  desc: 'Dark luxury · pinned horizontal event scroll · glowing gold', price: '₹2,499' }
+  basic: {
+    name: 'Royal Heritage',
+    desc: 'Envelope opening · scratch-card save-the-date · maroon & gold classic',
+    price: '₹899',
+    features: ['Envelope Opening', 'Scratch-Card Reveal', 'Events & RSVP', 'Photo Gallery']
+  },
+  cinematic: {
+    name: 'Midnight Cinema',
+    desc: 'Dark luxury · pinned horizontal event scroll · glowing gold',
+    price: '₹1,499',
+    popular: true,
+    features: ['Cinematic Reveal', 'Pinned Scroll Story', 'Glowing Gold FX', 'Events & RSVP', 'Photo Gallery', 'Dark Premium Theme']
+  }
 };
 
 /* in-memory drafts + orders — short-lived by design (drafts GC after 2h, orders
