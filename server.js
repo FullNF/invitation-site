@@ -4,11 +4,13 @@
  *   GET  /builder?template=id     -> mobile-first wizard
  *   GET  /demo/:template          -> template demo with dummy data
  *   POST /api/upload-music        -> upload a music file directly, returns its URL
+ *   POST /api/lead                -> capture a phone number before purchase (follow-up)
  *   POST /api/preview             -> save draft, returns preview token
  *   GET  /preview/:token          -> render selected template with draft data
  *   POST /api/create-order        -> create Razorpay order via SDK
  *   POST /api/verify-payment      -> HMAC verify signature + publish invite
  *   GET  /invite/:id              -> final published invitation
+ *   GET  /admin                   -> leads/drafts/purchases dashboard (Google login required)
  */
 require('dotenv').config();
 const express = require('express');
@@ -18,6 +20,7 @@ const multer = require('multer');
 const { put, list } = require('@vercel/blob');
 const { nanoid } = require('nanoid');
 const Razorpay = require('razorpay');
+const { OAuth2Client } = require('google-auth-library');
 const { render } = require('./lib/render');
 
 const app = express();
@@ -73,6 +76,53 @@ if (!RZP_KEY || !RZP_SECRET) {
 }
 
 const rzp = new Razorpay({ key_id: RZP_KEY, key_secret: RZP_SECRET });
+
+/* ---- admin auth: Google Sign-In, restricted to an explicit email allowlist ----
+ * Unset Google credentials disable /admin gracefully rather than crashing the
+ * whole site — this feature can be configured after the rest is already live. */
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const SESSION_SECRET = process.env.SESSION_SECRET; // must be stable across instances — see note below
+const oauthClient = (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) ? new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) : null;
+
+function adminOrigin(req) { return `${req.protocol}://${req.get('host')}`; }
+
+// Lightweight signed session cookie (HMAC, like the Razorpay signature check
+// below) instead of a session store — Vercel functions share no memory across
+// invocations, so an in-memory session table would randomly log people out.
+function signSession(payload) {
+  const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(data).digest('base64url');
+  return `${data}.${sig}`;
+}
+function verifySession(token) {
+  if (!token || !SESSION_SECRET) return null;
+  const [data, sig] = token.split('.');
+  if (!data || !sig) return null;
+  const expected = crypto.createHmac('sha256', SESSION_SECRET).update(data).digest('base64url');
+  if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(data, 'base64url').toString());
+    if (!payload.exp || Date.now() > payload.exp) return null;
+    return payload;
+  } catch { return null; }
+}
+function getCookie(req, name) {
+  const header = req.headers.cookie;
+  if (!header) return null;
+  const found = header.split(';').map(s => s.trim()).find(s => s.startsWith(name + '='));
+  return found ? decodeURIComponent(found.slice(name.length + 1)) : null;
+}
+function requireAdmin(req, res, next) {
+  const session = verifySession(getCookie(req, 'admin_session'));
+  if (!session || !ADMIN_EMAILS.includes(session.email)) {
+    if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Not signed in' });
+    return res.redirect('/admin/login');
+  }
+  req.adminEmail = session.email;
+  next();
+}
 
 const PRICES = { basic: 89900, cinematic: 149900 }; // paise
 const TEMPLATE_META = {
@@ -133,6 +183,104 @@ app.post('/api/upload-music', (req, res) => {
       res.status(502).json({ error: 'Upload failed — try again' });
     }
   });
+});
+
+/* capture a phone number before purchase, so a stalled/abandoned draft can
+ * still be followed up on — fired from the builder's WhatsApp field on blur */
+app.post('/api/lead', async (req, res) => {
+  try {
+    const { phone, groom, bride, template } = req.body || {};
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+    if (cleanPhone.length < 10) return res.status(400).json({ error: 'Invalid phone number' });
+    const id = nanoid(10);
+    await put(`leads/${id}.json`, JSON.stringify({
+      id, phone: cleanPhone, groom: groom || '', bride: bride || '', template: template || '', ts: Date.now()
+    }), { access: 'public', contentType: 'application/json', addRandomSuffix: false });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Lead capture error:', error);
+    res.status(500).json({ error: 'Could not save' });
+  }
+});
+
+/* ---- Admin: Google Sign-In + dashboard (leads, drafts, purchases) ---- */
+
+app.get('/admin/login', (req, res) => {
+  if (!oauthClient) return res.status(503).send('Admin login isn\'t configured yet — set GOOGLE_CLIENT_ID/SECRET.');
+  res.send(`<!doctype html><html><head><meta charset="utf-8"><title>Admin Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>body{font-family:system-ui,sans-serif;background:#faf6ee;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+    .box{text-align:center;background:#fff;padding:44px 36px;border-radius:16px;box-shadow:0 8px 32px rgba(74,15,31,.12)}
+    h1{color:#6d1a2e;font-size:20px;margin:0 0 24px}
+    a{display:inline-flex;align-items:center;gap:10px;background:#6d1a2e;color:#f6ecd8;text-decoration:none;padding:13px 24px;border-radius:10px;font-weight:600}
+    a:hover{background:#4a0f1f}</style></head>
+    <body><div class="box"><h1>Wedding Site Admin</h1><a href="/admin/auth/start">Sign in with Google →</a></div></body></html>`);
+});
+
+app.get('/admin/auth/start', (req, res) => {
+  if (!oauthClient) return res.status(503).send('Admin login isn\'t configured yet.');
+  const url = oauthClient.generateAuthUrl({
+    scope: ['openid', 'email', 'profile'],
+    redirect_uri: `${adminOrigin(req)}/admin/auth/callback`,
+    prompt: 'select_account'
+  });
+  res.redirect(url);
+});
+
+app.get('/admin/auth/callback', async (req, res) => {
+  if (!oauthClient) return res.status(503).send('Admin login isn\'t configured yet.');
+  try {
+    const { code } = req.query;
+    const redirect_uri = `${adminOrigin(req)}/admin/auth/callback`;
+    const { tokens } = await oauthClient.getToken({ code, redirect_uri });
+    const ticket = await oauthClient.verifyIdToken({ idToken: tokens.id_token, audience: GOOGLE_CLIENT_ID });
+    const payload = ticket.getPayload();
+    const email = (payload.email || '').toLowerCase();
+    if (!payload.email_verified || !ADMIN_EMAILS.includes(email)) {
+      return res.status(403).send('Access denied — this Google account is not authorized for admin access.');
+    }
+    if (!SESSION_SECRET) return res.status(503).send('Admin login isn\'t fully configured yet — missing SESSION_SECRET.');
+    const session = signSession({ email, exp: Date.now() + 7 * 24 * 3600 * 1000 });
+    res.setHeader('Set-Cookie', `admin_session=${encodeURIComponent(session)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 3600}`);
+    res.redirect('/admin');
+  } catch (error) {
+    console.error('Admin OAuth callback error:', error);
+    res.status(500).send('Login failed — try again.');
+  }
+});
+
+app.get('/admin/logout', (req, res) => {
+  res.setHeader('Set-Cookie', 'admin_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
+  res.redirect('/admin/login');
+});
+
+app.get('/admin', requireAdmin, (req, res) => {
+  // served from views/, not public/ — public/ is statically served and would
+  // otherwise let anyone fetch the dashboard shell (not the data) unauthenticated
+  res.sendFile(path.join(__dirname, 'views', 'admin.html'));
+});
+
+app.get('/api/admin/data', requireAdmin, async (req, res) => {
+  try {
+    const [leadsList, invitesList] = await Promise.all([
+      list({ prefix: 'leads/' }),
+      list({ prefix: 'invites/' })
+    ]);
+    const fetchAll = blobs => Promise.all(blobs.map(b => fetch(b.url).then(r => r.json()).catch(() => null)));
+    const [leads, invites] = await Promise.all([fetchAll(leadsList.blobs), fetchAll(invitesList.blobs)]);
+    const draftsArr = [...drafts.entries()].map(([token, d]) => ({
+      token, template: d.template, groom: d.data?.groom || '', bride: d.data?.bride || '',
+      phone: d.data?.whatsapp || '', ts: d.ts
+    }));
+    res.json({
+      leads: leads.filter(Boolean).sort((a, b) => b.ts - a.ts),
+      invites: invites.filter(Boolean).sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt)),
+      drafts: draftsArr.sort((a, b) => b.ts - a.ts)
+    });
+  } catch (error) {
+    console.error('Admin data error:', error);
+    res.status(500).json({ error: 'Failed to load admin data' });
+  }
 });
 
 /* save draft -> preview token */

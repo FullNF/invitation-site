@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Shubh Vivah</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&display=swap" rel="stylesheet">
+<style>
+:root{--maroon:#6d1a2e;--maroon-dark:#4a0f1f;--gold:#c9a24b;--cream:#faf6ee;--ink:#5a4632}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Cormorant Garamond',serif;background:var(--cream);color:var(--ink);min-height:100vh}
+header{background:linear-gradient(135deg,var(--maroon-dark),var(--maroon));color:#f6ecd8;padding:20px 24px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-family:'Cinzel',serif;font-size:16px;letter-spacing:.12em}
+header a{color:var(--gold);text-decoration:none;font-size:13px;font-family:'Cinzel',serif;letter-spacing:.08em}
+main{max-width:1100px;margin:0 auto;padding:28px 20px 60px}
+.tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.tab{font-family:'Cinzel',serif;font-size:12px;letter-spacing:.08em;padding:11px 18px;border-radius:999px;border:1.5px solid #e5d8bd;background:#fff;color:#8a6a25;cursor:pointer}
+.tab.on{background:var(--maroon);color:#f6ecd8;border-color:var(--maroon)}
+.panel{display:none}
+.panel.on{display:block}
+.card{background:#fff;border-radius:14px;border:1px solid #f0e6d2;overflow:hidden;box-shadow:0 4px 16px rgba(74,15,31,.06)}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th{text-align:left;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.08em;color:#8a6a25;background:#faf6ee;padding:12px 16px;border-bottom:1px solid #ecdfc4;white-space:nowrap}
+td{padding:12px 16px;border-bottom:1px solid #f5efe0;vertical-align:top}
+tr:last-child td{border-bottom:none}
+.empty{padding:40px 20px;text-align:center;color:#a08a68;font-style:italic}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;font-family:'Cinzel',serif;letter-spacing:.04em}
+.pill.basic{background:#f3e3ea;color:#6d1a2e}
+.pill.cinematic{background:#2a1520;color:#e8d7a8}
+a.wa{color:#1faa53;text-decoration:none;font-weight:600}
+a.link{color:var(--maroon);text-decoration:none;font-weight:600;word-break:break-all}
+.count{background:rgba(255,255,255,.15);border-radius:999px;padding:2px 9px;font-size:11px;margin-left:6px}
+.loading{padding:60px;text-align:center;color:#a08a68;font-style:italic}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>SHUBH VIVAH — ADMIN</h1>
+  <a href="/admin/logout">Sign out</a>
+</header>
+
+<main>
+  <div class="tabs">
+    <div class="tab on" data-tab="leads">Leads <span class="count" id="cLeads">–</span></div>
+    <div class="tab" data-tab="drafts">In-Progress Previews <span class="count" id="cDrafts">–</span></div>
+    <div class="tab" data-tab="invites">Purchased Invites <span class="count" id="cInvites">–</span></div>
+  </div>
+
+  <div id="loading" class="loading">Loading…</div>
+
+  <div class="panel on" id="panel-leads"><div class="card"><table id="tblLeads"></table></div></div>
+  <div class="panel" id="panel-drafts"><div class="card"><table id="tblDrafts"></table></div></div>
+  <div class="panel" id="panel-invites"><div class="card"><table id="tblInvites"></table></div></div>
+</main>
+
+<script>
+const fmtDate = ts => ts ? new Date(ts).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const tplPill = t => t ? `<span class="pill ${esc(t)}">${t === 'cinematic' ? 'Midnight Cinema' : 'Royal Heritage'}</span>` : '—';
+const waLink = phone => phone ? `<a class="wa" href="https://wa.me/${phone.replace(/\D/g,'')}" target="_blank" rel="noopener">${esc(phone)} ↗</a>` : '—';
+
+function renderTable(el, rows, cols, emptyMsg) {
+  if (!rows.length) { el.innerHTML = `<tr><td class="empty">${emptyMsg}</td></tr>`; return; }
+  el.innerHTML = `<tr>${cols.map(c => `<th>${c.label}</th>`).join('')}</tr>` +
+    rows.map(r => `<tr>${cols.map(c => `<td>${c.render(r)}</td>`).join('')}</tr>`).join('');
+}
+
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('on'));
+  t.classList.add('on');
+  document.getElementById('panel-' + t.dataset.tab).classList.add('on');
+}));
+
+fetch('/api/admin/data').then(r => {
+  if (r.status === 401) { location.href = '/admin/login'; return null; }
+  return r.json();
+}).then(d => {
+  if (!d) return;
+  document.getElementById('loading').style.display = 'none';
+
+  document.getElementById('cLeads').textContent = d.leads.length;
+  document.getElementById('cDrafts').textContent = d.drafts.length;
+  document.getElementById('cInvites').textContent = d.invites.length;
+
+  renderTable(document.getElementById('tblLeads'), d.leads, [
+    { label: 'When', render: r => fmtDate(r.ts) },
+    { label: 'Couple', render: r => `${esc(r.groom)||'—'} &amp; ${esc(r.bride)||'—'}` },
+    { label: 'Phone', render: r => waLink(r.phone) },
+    { label: 'Template', render: r => tplPill(r.template) },
+  ], 'No leads yet — captured when someone enters a phone number in the builder without completing payment.');
+
+  renderTable(document.getElementById('tblDrafts'), d.drafts, [
+    { label: 'When', render: r => fmtDate(r.ts) },
+    { label: 'Couple', render: r => `${esc(r.groom)||'—'} &amp; ${esc(r.bride)||'—'}` },
+    { label: 'Phone', render: r => waLink(r.phone) },
+    { label: 'Template', render: r => tplPill(r.template) },
+  ], 'No active previews. Note: this list only reflects recent activity on the current server instance — it is not a permanent record.');
+
+  renderTable(document.getElementById('tblInvites'), d.invites, [
+    { label: 'Paid At', render: r => fmtDate(new Date(r.paidAt).getTime()) },
+    { label: 'Couple', render: r => `${esc(r.data?.groom)||'—'} &amp; ${esc(r.data?.bride)||'—'}` },
+    { label: 'Template', render: r => tplPill(r.template) },
+    { label: 'Amount', render: r => '₹' + (r.amount / 100).toLocaleString('en-IN') },
+    { label: 'Invite Link', render: r => `<a class="link" href="/invite/${r.id}" target="_blank">/invite/${r.id} ↗</a>` },
+    { label: 'Razorpay Payment', render: r => esc(r.razorpayPaymentId) || '—' },
+  ], 'No purchases yet.');
+}).catch(() => {
+  document.getElementById('loading').textContent = 'Failed to load — refresh to try again.';
+});
+</script>
+
+</body>
+</html>

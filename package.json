@@ -18,6 +18,7 @@
     "@vercel/blob": "^0.27.1",
     "dotenv": "^17.4.2",
     "express": "^4.22.2",
+    "google-auth-library": "^11.0.0",
     "multer": "^2.2.0",
     "nanoid": "^3.3.16",
     "razorpay": "^2.9.8"

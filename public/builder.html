@@ -290,15 +290,31 @@ const STEPS = [
   <div class="review"><h4>GALLERY</h4><div>${D.showGallery ? '✓ Enabled' : '✗ Disabled'}</div></div>
   <div class="review"><h4>STORY</h4><div>${D.showStory ? '✓ Enabled' : '✗ Disabled'}</div></div>
   <div class="pricebox">
-    <div style="font-size:24px;color:#c9a24b">₹ ${TPL==='cinematic'?'2,499':'1,499'}</div>
+    <div style="font-size:24px;color:#c9a24b">₹ ${TPL==='cinematic'?'1,499':'899'}</div>
   </div>
   <button class="btn next" id="payBtn" style="width:100%;padding:17px">💳 PAY & PUBLISH</button>` },
 ];
 
+let lastSentPhone = null;
 function bind(){
   document.querySelectorAll('input[data-path]').forEach(inp=>{
     inp.addEventListener('input', ()=>{ set(inp.dataset.path, inp.value); save(); });
   });
+
+  // capture a lead for follow-up as soon as they leave the WhatsApp number
+  // field with something that looks real — catches people who never reach Pay
+  const waInput = document.querySelector('input[data-path="whatsapp"]');
+  if (waInput) {
+    waInput.addEventListener('blur', () => {
+      const digits = waInput.value.replace(/\D/g, '');
+      if (digits.length < 10 || digits === lastSentPhone) return;
+      const prev = lastSentPhone;
+      lastSentPhone = digits;
+      fetch('/api/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: digits, groom: D.groom, bride: D.bride, template: TPL }) })
+        .catch(() => { lastSentPhone = prev; }); // best-effort, retry on next blur if it failed
+    });
+  }
   document.querySelectorAll('textarea[data-path]').forEach(inp=>{
     inp.addEventListener('input', ()=>{ set(inp.dataset.path, inp.value); save(); });
   });
