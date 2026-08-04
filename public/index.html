@@ -28,12 +28,15 @@ body{font-family:'Cormorant Garamond',serif;background:var(--cream);color:var(--
 .card:hover::before{opacity:1}
 .card:hover{transform:translateY(-16px);box-shadow:0 24px 56px rgba(74,15,31,.2), 0 0 60px rgba(201,162,75,.15);border-color:rgba(201,162,75,.4)}
 
-.thumb{aspect-ratio:16/10;position:relative;display:flex;align-items:center;justify-content:center;font-family:'Great Vibes',cursive;font-size:36px;color:#f6ecd8;overflow:hidden;background:linear-gradient(135deg,#2a1520 0%,#4a0f1f 100%)}
-.thumb.basic{background:linear-gradient(135deg,#7d2036,#5d1727)}
-.thumb.cinematic{background:radial-gradient(ellipse at 50% 0%,#3a2410,#120a0e 70%)}
-.thumb .ring{position:absolute;inset:16px;border:2px solid rgba(232,215,168,.25);border-radius:16px;transition:.35s}
-.card:hover .thumb .ring{border-color:rgba(201,162,75,.5);box-shadow:0 0 30px rgba(201,162,75,.2)}
-.thumb .tag{position:absolute;top:16px;right:16px;background:var(--gold);color:#3d2a08;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.14em;padding:7px 14px;border-radius:999px;font-weight:600;z-index:2;transition:.35s;box-shadow:0 4px 12px rgba(201,162,75,.3)}
+.thumb{aspect-ratio:16/10;position:relative;overflow:hidden;background:#2a1520}
+.thumb-img{position:absolute;inset:0;background-size:cover;background-position:center top;transition:transform .6s cubic-bezier(.25,.46,.45,.94)}
+.thumb-img.basic{background-image:url('/assets/images/thumb-basic.jpg')}
+.thumb-img.cinematic{background-image:url('/assets/images/thumb-cinematic.jpg')}
+.card:hover .thumb-img{transform:scale(1.07)}
+.thumb::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(20,8,12,.45) 100%);pointer-events:none;z-index:1}
+.thumb .ring{position:absolute;inset:14px;border:1.5px solid rgba(232,215,168,.4);border-radius:14px;transition:.35s;pointer-events:none;z-index:2}
+.card:hover .thumb .ring{border-color:rgba(201,162,75,.65);box-shadow:0 0 30px rgba(201,162,75,.25)}
+.thumb .tag{position:absolute;top:16px;right:16px;background:var(--gold);color:#3d2a08;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.14em;padding:7px 14px;border-radius:999px;font-weight:600;z-index:3;transition:.35s;box-shadow:0 4px 12px rgba(201,162,75,.3)}
 .card:hover .thumb .tag{transform:scale(1.1)}
 
 .body{padding:28px;display:flex;flex-direction:column;gap:10px;flex:1;position:relative;z-index:2}
@@ -52,12 +55,24 @@ body{font-family:'Cormorant Garamond',serif;background:var(--cream);color:var(--
 .btn.solid:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(109,26,46,.4)}
 
 footer{text-align:center;padding:40px 20px;font-size:14px;color:#98815f;font-style:italic;border-top:1px solid #ecdfc4;margin-top:60px;background:rgba(250,246,238,.5)}
+footer .credit{margin-top:14px;font-size:12.5px;letter-spacing:.05em;font-style:normal;opacity:.8}
+footer .credit a{color:var(--maroon);text-decoration:none;font-weight:600;border-bottom:1px solid rgba(109,26,46,.3);transition:.2s}
+footer .credit a:hover{border-color:var(--maroon)}
 
 @media(max-width:768px){
-  .hero{padding:60px 16px 80px}
-  .grid{margin:-30px auto 60px;gap:24px;grid-template-columns:1fr}
+  .hero{padding:56px 16px 76px}
+  .grid{margin:-30px auto 60px;gap:22px;grid-template-columns:1fr;padding:0 16px}
   .card{border-radius:18px}
-  .thumb{aspect-ratio:16/12}
+  .card:hover{transform:none}
+  .body{padding:22px}
+  .features{grid-template-columns:1fr 1fr;font-size:11.5px}
+  footer{padding:32px 16px;margin-top:44px}
+}
+
+@media(max-width:380px){
+  .badge{font-size:10px;padding:8px 14px}
+  .row{flex-direction:column}
+  .btn.ghost{order:2}
 }
 </style>
 </head>
@@ -76,15 +91,16 @@ footer{text-align:center;padding:40px 20px;font-size:14px;color:#98815f;font-sty
 
 <footer>
   Choose a design, fill your story, share one link with every guest. Simple, beautiful, forever.
+  <div class="credit">Developed by <a href="https://youwegroup.in" target="_blank" rel="noopener">YouWe Group</a></div>
 </footer>
 
 <script>
 fetch('/api/templates').then(r=>r.json()).then(list=>{
   document.getElementById('grid').innerHTML = list.map(t=>`
     <div class="card">
-      <div class="thumb ${t.id}">
+      <div class="thumb">
+        <div class="thumb-img ${t.id}"></div>
         <div class="ring"></div>
-        <span>${t.name}</span>
         <div class="tag">${t.price}</div>
       </div>
       <div class="body">
