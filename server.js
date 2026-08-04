@@ -24,6 +24,11 @@ const { OAuth2Client } = require('google-auth-library');
 const { render } = require('./lib/render');
 
 const app = express();
+// Vercel terminates TLS at its edge and forwards to this function over plain
+// HTTP, so req.protocol reports 'http' unless told to trust X-Forwarded-Proto
+// — without this, the Google OAuth redirect_uri is generated as http://,
+// which won't match the https:// URI registered in Google Cloud Console.
+app.set('trust proxy', true);
 app.use(express.json({ limit: '10mb' }));
 
 /* ---- media handling: photos/music go to Vercel Blob, not local disk.
