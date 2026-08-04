@@ -341,16 +341,25 @@ function bind(){
 
   const musicFile = document.getElementById('musicFile');
   if(musicFile){
-    musicFile.addEventListener('change', ()=>{
+    musicFile.addEventListener('change', async ()=>{
       const file = musicFile.files[0];
       if(!file) return;
-      // stays well under Vercel's ~4.5MB request-body cap once base64-encoded
-      // alongside up to 4 compressed photos (~0.25MB each) in the same JSON POST
-      if(file.size > 2.5*1024*1024){ toast('Music file too large — please pick one under 2.5MB'); musicFile.value=''; return; }
-      const reader = new FileReader();
-      reader.onload = (e)=>{ D.musicFile=e.target.result; save(); };
-      reader.onerror = ()=> toast('Could not read that music file');
-      reader.readAsDataURL(file);
+      // uploaded on its own via /api/upload-music (raw binary, not base64-in-JSON),
+      // so it isn't sharing Vercel's ~4.5MB request-body cap with anything else
+      if(file.size > 4.5*1024*1024){ toast('Music file too large — please pick one under 4.5MB'); musicFile.value=''; return; }
+      toast('Uploading music…');
+      try {
+        const fd = new FormData();
+        fd.append('music', file);
+        const r = await fetch('/api/upload-music', { method:'POST', body: fd });
+        const j = await r.json();
+        if(!r.ok) return toast('Music upload failed: ' + (j.error || 'try a different file'));
+        D.musicFile = j.url;
+        save();
+        toast('Music uploaded ✓');
+      } catch (e) {
+        toast('Music upload failed — check your connection');
+      }
     });
   }
 }
