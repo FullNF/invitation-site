@@ -154,7 +154,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-const PRICES = { basic: 100, cinematic: 200 }; // paise — TEMP: basic ₹1 / cinematic ₹2 for a live payment test, revert after
+const PRICES = { basic: 89900, cinematic: 149900 }; // paise
 const TEMPLATE_META = {
   basic: {
     name: 'Royal Heritage',
@@ -407,6 +407,8 @@ app.delete('/api/admin/draft/:token', requireAdmin, (req, res) => {
   res.json({ success: true, found: drafts.delete(req.params.token) });
 });
 
+const PREVIEW_TTL_MS = 72e5; // 2 hours
+
 /* save draft -> preview token */
 app.post('/api/preview', async (req, res) => {
   try {
@@ -418,7 +420,7 @@ app.post('/api/preview', async (req, res) => {
     const media = await saveMedia('draft-' + token, data);
     drafts.set(token, { template, data, media, ts: Date.now() });
     // GC old drafts (>2h)
-    for (const [k, v] of drafts) if (Date.now() - v.ts > 72e5) drafts.delete(k);
+    for (const [k, v] of drafts) if (Date.now() - v.ts > PREVIEW_TTL_MS) drafts.delete(k);
     await sendTelegramAlert(
       `👀 <b>Preview Generated</b>\n` +
       `Couple: ${escHtml(data?.groom) || '—'} &amp; ${escHtml(data?.bride) || '—'}\n` +
@@ -431,10 +433,49 @@ app.post('/api/preview', async (req, res) => {
   }
 });
 
+function formatRemaining(ms) {
+  const totalMin = Math.max(1, Math.round(ms / 60000)); // never show 0m — floor at 1
+  const h = Math.floor(totalMin / 60), m = totalMin % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+// Wraps the rendered template with a notice at the top and bottom of the page
+// making clear this is an unpurchased draft, not a live invite — inserted
+// server-side (not baked into the templates) so it only ever shows up here,
+// never on a paid /invite/:id page.
+function withPreviewNotice(html, template, remainingText) {
+  const notice = `
+    <div style="position:relative;z-index:1000;background:#1a1006;color:#f6ecd8;font-family:system-ui,-apple-system,sans-serif;padding:12px 16px;text-align:center;font-size:13.5px;line-height:1.6;border-bottom:2px solid #c9a24b">
+      ⏳ <strong>This is a PREVIEW</strong> — temporary and not visible to your guests. Valid for <strong>${escHtml(remainingText)}</strong>.
+      <a href="/builder.html?template=${escHtml(template)}" style="color:#e8d7a8;font-weight:700;text-decoration:underline;margin-left:6px;white-space:nowrap">Purchase now to make it permanent →</a>
+    </div>`;
+  return html
+    .replace(/<body([^>]*)>/i, `<body$1>${notice}`)
+    .replace(/<\/body>/i, `${notice}</body>`);
+}
+
+function expiredPreviewPage() {
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview Expired — Shubh Vivah</title>
+    <style>body{font-family:system-ui,-apple-system,sans-serif;background:#faf6ee;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center}
+    .box{max-width:420px}
+    h1{color:#6d1a2e;font-size:22px;margin:0 0 12px}
+    p{color:#7a6650;font-size:16px;line-height:1.6;margin:0 0 26px}
+    a{display:inline-block;background:#6d1a2e;color:#f6ecd8;text-decoration:none;padding:13px 28px;border-radius:10px;font-weight:600}</style>
+    </head><body><div class="box">
+    <h1>⏳ This Page Has Expired</h1>
+    <p>This page is expired as it was only a temporary trial preview — it was never purchased, so it wasn't saved permanently. Create a new invitation to preview again, or purchase one to get a permanent, shareable link.</p>
+    <a href="/">Start a New Invitation</a>
+    </div></body></html>`;
+}
+
 app.get('/preview/:token', (req, res) => {
   const d = drafts.get(req.params.token);
-  if (!d) return res.status(404).send('Preview expired — go back and tap Preview again.');
-  res.send(render(d.template, d.data, { photoUrls: d.media?.photoUrls || [], musicUrl: d.media?.musicUrl || null }));
+  if (!d) return res.status(404).send(expiredPreviewPage());
+  const remaining = PREVIEW_TTL_MS - (Date.now() - d.ts);
+  if (remaining <= 0) { drafts.delete(req.params.token); return res.status(404).send(expiredPreviewPage()); }
+  const html = render(d.template, d.data, { photoUrls: d.media?.photoUrls || [], musicUrl: d.media?.musicUrl || null });
+  res.send(withPreviewNotice(html, d.template, formatRemaining(remaining)));
 });
 
 /* ---- Razorpay Payment Integration ---- */
