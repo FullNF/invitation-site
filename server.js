@@ -154,7 +154,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-const PRICES = { basic: 89900, cinematic: 149900 }; // paise
+const PRICES = { basic: 100, cinematic: 149900 }; // paise — TEMP: basic set to ₹1 for a live payment test, revert after
 const TEMPLATE_META = {
   basic: {
     name: 'Royal Heritage',
