@@ -63,8 +63,10 @@ async function saveMedia(id, data) {
     if (data.musicFile.startsWith('data:audio')) {
       const ext = ((/^data:audio\/([a-z0-9.+-]+);/i.exec(data.musicFile) || [])[1] || 'mp3').replace('mpeg', 'mp3');
       out.musicUrl = await putDataUrl(data.musicFile, `music.${ext}`);
-    } else if (/^https?:\/\//.test(data.musicFile)) {
-      out.musicUrl = data.musicFile; // already uploaded via /api/upload-music
+    } else if (/^(https?:\/\/|\/)/.test(data.musicFile)) {
+      // already-hosted URL — either a Blob URL from /api/upload-music (absolute)
+      // or a library track under /assets/sounds/library/ (relative)
+      out.musicUrl = data.musicFile;
     }
     data.musicFile = null;
   }
@@ -171,6 +173,15 @@ const TEMPLATE_META = {
   }
 };
 
+/* ---- Curated background music library ----
+ * Files live in assets/sounds/library/ (static, version-controlled — these
+ * never change per-invite so there's no reason to put them in Blob). Add an
+ * MP3 there and one entry here to make it selectable in the builder.
+ * IMPORTANT: only add tracks you actually have the rights to distribute —
+ * hosting copyrighted commercial music here is a real legal risk. */
+const MUSIC_LIBRARY = [
+  // { id: 'track1', name: 'Soft Piano Romance', url: '/assets/sounds/library/track1.mp3' },
+];
 /* ---- Server-side field validation ----
  * The builder's maxlength/pattern attributes are a UX nicety only — a direct
  * API call bypasses them completely, so genuine limits have to live here too.
@@ -243,6 +254,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/templates', (req, res) => {
   res.json(Object.entries(TEMPLATE_META).map(([id, m]) => ({ id, ...m, amount: PRICES[id] })));
+});
+
+app.get('/api/music-library', (req, res) => {
+  res.json(MUSIC_LIBRARY);
 });
 
 /* demo with untouched dummy data */
