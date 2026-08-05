@@ -9,7 +9,7 @@
 <style>
 :root{--maroon:#6d1a2e;--maroon-dark:#4a0f1f;--gold:#c9a24b;--gold-light:#e8d7a8;--cream:#faf6ee;--ink:#5a4632}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Cormorant Garamond',serif;background:var(--cream);color:var(--ink);min-height:100vh;padding-bottom:110px}
+body{font-family:'Cormorant Garamond',serif;background:var(--cream);color:var(--ink);min-height:100vh;padding-bottom:190px}
 header{background:linear-gradient(135deg,var(--maroon-dark),var(--maroon));color:#f6ecd8;padding:18px 18px 14px;position:sticky;top:0;z-index:20;box-shadow:0 6px 20px rgba(74,15,31,.25)}
 header .top{display:flex;align-items:center;justify-content:space-between;max-width:640px;margin:0 auto}
 header a{color:var(--gold-light);text-decoration:none;font-size:22px;line-height:1}
@@ -30,6 +30,8 @@ input,select,textarea{width:100%;padding:13px 14px;border:1.5px solid #e5d8bd;bo
 input[type="file"]{padding:8px}
 textarea{min-height:80px;resize:vertical}
 input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,162,75,.15)}
+input.invalid{border-color:#b3413f}
+input.invalid:focus{box-shadow:0 0 0 3px rgba(179,65,63,.15)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .hint{font-size:13.5px;color:#a08a68;font-style:italic;margin-top:5px}
 .card{background:#fff;border:1.5px solid #eee0c8;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 6px 18px rgba(74,15,31,.05)}
@@ -62,6 +64,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 
 .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);background:#3d2a1a;color:#f6ecd8;padding:11px 20px;border-radius:999px;font-size:14.5px;opacity:0;transition:.3s;z-index:99;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%)}
 .photo-preview{width:100%;height:120px;background:#f0e6d2;border:1px solid #ecdfc4;border-radius:8px;margin-top:8px;object-fit:cover}
+.trust{text-align:center;font-size:12.5px;color:#98815f;margin-top:12px}
+.callus{display:block;text-align:center;margin-top:16px;padding:12px;border-radius:12px;background:#faf3e2;border:1px dashed var(--gold);font-size:14px;color:#8a6a25;text-decoration:none}
+.callus:active{opacity:.7}
 </style>
 </head>
 <body>
@@ -117,14 +122,20 @@ let D = {
 
 let step = 0;
 
+const SUPPORT_PHONE = '+918979324895';
+const SUPPORT_PHONE_DISPLAY = '+91 89793 24895';
+const TODAY = new Date().toISOString().slice(0,10);
+// accepts 10-15 digits so both plain Indian mobiles and numbers with a
+// country code (NRI guests etc.) pass, while still rejecting garbage like "abc"
+const isValidPhone = v => { const d=(v||'').replace(/\D/g,''); return d.length>=10 && d.length<=15; };
 const fld = (label, path, opts={}) => `
   <label>${label}</label>
-  <input type="${opts.type||'text'}" data-path="${path}" placeholder="${opts.ph||''}" value="${get(path)||''}">
+  <input type="${opts.type||'text'}" data-path="${path}" placeholder="${opts.ph||''}" value="${get(path)||''}"${opts.maxlength?` maxlength="${opts.maxlength}"`:''}${opts.type==='date'?` min="${TODAY}"`:''}>
   ${opts.hint?`<div class="hint">${opts.hint}</div>`:''}`;
 
 const txtarea = (label, path, opts={}) => `
   <label>${label}</label>
-  <textarea data-path="${path}" placeholder="${opts.ph||''}">${get(path)||''}</textarea>
+  <textarea data-path="${path}" placeholder="${opts.ph||''}"${opts.maxlength?` maxlength="${opts.maxlength}"`:''}>${get(path)||''}</textarea>
   ${opts.hint?`<div class="hint">${opts.hint}</div>`:''}`;
 
 function get(p){ return p.split('.').reduce((o,k)=>o&&o[k], D); }
@@ -171,13 +182,13 @@ function compressImage(file, maxDim=1600, quality=0.82){
 
 const STEPS = [
 { title:'THE COUPLE', sub:'Shaadi kiski hai? 💕', html:()=>`
-  ${fld('GROOM\'S NAME','groom',{ph:'e.g. Aarav'})}
-  ${fld('BRIDE\'S NAME','bride',{ph:'e.g. Ishita'})}
+  ${fld('GROOM\'S NAME','groom',{ph:'e.g. Aarav', maxlength:40})}
+  ${fld('BRIDE\'S NAME','bride',{ph:'e.g. Ishita', maxlength:40})}
   ${fld('WEDDING DATE','weddingDate',{type:'date'})}
-  ${fld('VENUE NAME','venueName',{ph:'The Grand Utsav'})}
-  ${fld('VENUE CITY','city',{ph:'Jaipur, India'})}
-  ${fld('WHATSAPP NUMBER','whatsapp',{ph:'9811112222'})}
-  ${fld('WEDDING HASHTAG','hashtag',{ph:'#AaravWedsIshita'})}
+  ${fld('VENUE NAME','venueName',{ph:'The Grand Utsav', maxlength:60})}
+  ${fld('VENUE CITY','city',{ph:'Jaipur, India', maxlength:40})}
+  ${fld('WHATSAPP NUMBER','whatsapp',{type:'tel', ph:'9811112222', maxlength:15, hint:'10-digit mobile — used for RSVP click-to-chat'})}
+  ${fld('WEDDING HASHTAG','hashtag',{ph:'#AaravWedsIshita', maxlength:30})}
   <div class="section-title">COUNTDOWN TIMER</div>
   <label style="display:flex;align-items:center;gap:10px;margin-top:8px">
     <span>Show countdown?</span>
@@ -191,13 +202,13 @@ const STEPS = [
   </label>
   <div id="blessDiv" style="display:${D.showBlessings?'block':'none'}">
     <div class="section-title">GROOM'S SIDE</div>
-    ${fld('Father Name','groomParents.father',{ph:'Mr. Suresh'})}
-    ${fld('Mother Name','groomParents.mother',{ph:'Mrs. Rekha'})}
-    ${fld('Family Surname','groomFamily',{ph:'Malhotra'})}
+    ${fld('Father Name','groomParents.father',{ph:'Mr. Suresh', maxlength:40})}
+    ${fld('Mother Name','groomParents.mother',{ph:'Mrs. Rekha', maxlength:40})}
+    ${fld('Family Surname','groomFamily',{ph:'Malhotra', maxlength:30})}
     <div class="section-title">BRIDE'S SIDE</div>
-    ${fld('Father Name','brideParents.father',{ph:'Mr. Anil'})}
-    ${fld('Mother Name','brideParents.mother',{ph:'Mrs. Poonam'})}
-    ${fld('Family Surname','brideFamily',{ph:'Bansal'})}
+    ${fld('Father Name','brideParents.father',{ph:'Mr. Anil', maxlength:40})}
+    ${fld('Mother Name','brideParents.mother',{ph:'Mrs. Poonam', maxlength:40})}
+    ${fld('Family Surname','brideFamily',{ph:'Bansal', maxlength:30})}
   </div>` },
 
 { title:'EVENTS & CEREMONIES', sub:'Choose jo events chahiye', html:()=>`
@@ -210,13 +221,13 @@ const STEPS = [
         <label class="switch" style="margin:0"><input type="checkbox" data-toggle-event="${s}" ${ev.on?'checked':''}><span></span></label>
       </div>
       <div class="body">
-        ${fld('Event Name','events.'+s+'.name',{ph:s+' Ceremony'})}
+        ${fld('Event Name','events.'+s+'.name',{ph:s+' Ceremony', maxlength:40})}
         <div class="two">
           <div>${fld('Date','events.'+s+'.date',{type:'date'})}</div>
           <div>${fld('Time','events.'+s+'.time',{type:'time'})}</div>
         </div>
-        ${fld('Venue','events.'+s+'.venue',{ph:'The Grand Utsav'})}
-        ${fld('Description','events.'+s+'.desc',{ph:'One-line desc'})}
+        ${fld('Venue','events.'+s+'.venue',{ph:'The Grand Utsav', maxlength:60})}
+        ${fld('Description','events.'+s+'.desc',{ph:'One-line desc', maxlength:100})}
       </div>
     </div>`;
   }).join('')}
@@ -229,10 +240,10 @@ const STEPS = [
     <label class="switch" style="margin:0"><input type="checkbox" data-toggle-story ${D.showStory?'checked':''}><span></span></label>
   </label>
   <div id="storyDiv" style="display:${D.showStory?'block':'none'}">
-    ${fld('How We Met','howWeMet',{ph:'At a wedding'})}
-    ${fld('Perfect Morning','perfectMorning',{ph:'Coffee & cuddles'})}
-    ${txtarea('Our Story','description',{ph:'Tell us your love story...'})}
-    ${fld('Custom Hashtag','customHashtag',{ph:'#OurLoveStory'})}
+    ${fld('How We Met','howWeMet',{ph:'At a wedding', maxlength:60})}
+    ${fld('Perfect Morning','perfectMorning',{ph:'Coffee & cuddles', maxlength:60})}
+    ${txtarea('Our Story','description',{ph:'Tell us your love story...', maxlength:500})}
+    ${fld('Custom Hashtag','customHashtag',{ph:'#OurLoveStory', maxlength:30})}
   </div>
 
   <div class="section-title">GALLERY (4 PHOTOS)</div>
@@ -265,24 +276,24 @@ const STEPS = [
   <div class="section-title">INFO CARDS</div>
   <div class="card">
     <div class="cardhead"><b>ADDRESS</b><label class="switch" style="margin:0"><input type="checkbox" data-toggle-info="address" ${D.infoCards.address.on?'checked':''}><span></span></label></div>
-    <div class="body" style="display:${D.infoCards.address.on?'block':'none'}"><textarea data-path="infoCards.address.value" placeholder="Venue address">${D.infoCards.address.value}</textarea></div>
+    <div class="body" style="display:${D.infoCards.address.on?'block':'none'}"><textarea data-path="infoCards.address.value" placeholder="Venue address" maxlength="300">${D.infoCards.address.value}</textarea></div>
   </div>
   <div class="card">
     <div class="cardhead"><b>PARKING</b><label class="switch" style="margin:0"><input type="checkbox" data-toggle-info="parking" ${D.infoCards.parking.on?'checked':''}><span></span></label></div>
-    <div class="body" style="display:${D.infoCards.parking.on?'block':'none'}"><textarea data-path="infoCards.parking.value" placeholder="Parking info">${D.infoCards.parking.value}</textarea></div>
+    <div class="body" style="display:${D.infoCards.parking.on?'block':'none'}"><textarea data-path="infoCards.parking.value" placeholder="Parking info" maxlength="300">${D.infoCards.parking.value}</textarea></div>
   </div>
   <div class="card">
     <div class="cardhead"><b>GIFT REGISTRY</b><label class="switch" style="margin:0"><input type="checkbox" data-toggle-info="registry" ${D.infoCards.registry.on?'checked':''}><span></span></label></div>
-    <div class="body" style="display:${D.infoCards.registry.on?'block':'none'}"><input type="url" data-path="infoCards.registry.value" placeholder="https://registry.com" value="${D.infoCards.registry.value}"></div>
+    <div class="body" style="display:${D.infoCards.registry.on?'block':'none'}"><input type="url" data-path="infoCards.registry.value" placeholder="https://registry.com" value="${D.infoCards.registry.value}" maxlength="200"></div>
   </div>
   <div class="card">
     <div class="cardhead"><b>STAY INFO</b><label class="switch" style="margin:0"><input type="checkbox" data-toggle-info="stayInfo" ${D.infoCards.stayInfo.on?'checked':''}><span></span></label></div>
-    <div class="body" style="display:${D.infoCards.stayInfo.on?'block':'none'}"><textarea data-path="infoCards.stayInfo.value" placeholder="Hotel info">${D.infoCards.stayInfo.value}</textarea></div>
+    <div class="body" style="display:${D.infoCards.stayInfo.on?'block':'none'}"><textarea data-path="infoCards.stayInfo.value" placeholder="Hotel info" maxlength="300">${D.infoCards.stayInfo.value}</textarea></div>
   </div>
 
   <div class="section-title">RSVP</div>
-  ${fld('RSVP WhatsApp Number','rsvpWhatsapp',{ph:'9811112222'})}
-  ${fld('RSVP Message','rsvpMessage',{ph:'I\'ll be attending!'})}` },
+  ${fld('RSVP WhatsApp Number','rsvpWhatsapp',{type:'tel', ph:'9811112222', maxlength:15})}
+  ${fld('RSVP Message','rsvpMessage',{ph:'I\'ll be attending!', maxlength:150})}` },
 
 { title:'REVIEW & PAY', sub:'Final check', html:()=>`
   <div class="review"><h4>COUPLE</h4><div>${D.groom||'—'} ❤ ${D.bride||'—'}</div></div>
@@ -292,7 +303,9 @@ const STEPS = [
   <div class="pricebox">
     <div style="font-size:24px;color:#c9a24b">₹ ${TPL==='cinematic'?'1,499':'899'}</div>
   </div>
-  <button class="btn next" id="payBtn" style="width:100%;padding:17px">💳 PAY & PUBLISH</button>` },
+  <button class="btn next" id="payBtn" style="width:100%;padding:17px">💳 PAY & PUBLISH</button>
+  <div class="trust">🔒 Secured by Razorpay · your card details never touch our servers</div>
+  <a href="tel:${SUPPORT_PHONE}" class="callus">📞 Payment not going through? Call us — ${SUPPORT_PHONE_DISPLAY}</a>` },
 ];
 
 let lastSentPhone = null;
@@ -300,6 +313,29 @@ function bind(){
   document.querySelectorAll('input[data-path]').forEach(inp=>{
     inp.addEventListener('input', ()=>{ set(inp.dataset.path, inp.value); save(); });
   });
+
+  // flag any phone field that doesn't look like a real number on blur —
+  // whatsapp/rsvpWhatsapp both feed real wa.me links on the published invite,
+  // so a typo here means a guest hits a dead RSVP link, not just a cosmetic issue
+  document.querySelectorAll('input[data-path="whatsapp"], input[data-path="rsvpWhatsapp"]').forEach(inp=>{
+    inp.addEventListener('blur', ()=>{
+      inp.classList.toggle('invalid', inp.value.trim() !== '' && !isValidPhone(inp.value));
+    });
+  });
+
+  // auto-prefix the registry link with https:// if they forgot it — a bare
+  // "registry.com" would otherwise render as a dead link on the invite
+  const registryInput = document.querySelector('input[data-path="infoCards.registry.value"]');
+  if (registryInput) {
+    registryInput.addEventListener('blur', ()=>{
+      const v = registryInput.value.trim();
+      if (v && !/^https?:\/\//i.test(v)) {
+        registryInput.value = 'https://' + v;
+        set('infoCards.registry.value', registryInput.value);
+        save();
+      }
+    });
+  }
 
   // capture a lead for follow-up as soon as they leave the WhatsApp number
   // field with something that looks real — catches people who never reach Pay
@@ -398,8 +434,8 @@ async function bindPay(){
     try {
       const r = await fetch('/api/create-order',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({template:TPL, data:D})});
-      if(!r.ok) return toast('Order failed — try smaller photos/music');
-      o = await r.json();
+      o = await r.json().catch(()=>({}));
+      if(!r.ok) return toast(o.error || 'Order failed — try smaller photos/music');
     } catch (e) { return toast('Order failed — check your connection'); }
     if(o.error) return toast('Order failed: '+o.error);
     new Razorpay({
@@ -432,6 +468,8 @@ async function bindPay(){
 document.getElementById('btnPrev').onclick = ()=>{ if(step>0){step--;draw();} };
 document.getElementById('btnNext').onclick = ()=>{
   if(step===0 && (!D.groom.trim()||!D.bride.trim())) return toast('Names fill kar do!');
+  if(step===0 && D.whatsapp.trim() && !isValidPhone(D.whatsapp)) return toast('WhatsApp number sahi se daalo (10 digits)');
+  if(step===4 && D.rsvpWhatsapp.trim() && !isValidPhone(D.rsvpWhatsapp)) return toast('RSVP WhatsApp number sahi se daalo');
   if(step<STEPS.length-1){step++;draw();}
 };
 document.getElementById('btnPreview').onclick = async ()=>{
@@ -439,8 +477,8 @@ document.getElementById('btnPreview').onclick = async ()=>{
   try {
     const r = await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({template:TPL, data:D})});
-    if(!r.ok) return toast('Preview failed — try smaller photos/music');
-    const j = await r.json();
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) return toast(j.error || 'Preview failed — try smaller photos/music');
     if(j.token) window.open('/preview/'+j.token, '_blank');
   } catch (e) { toast('Preview failed — check your connection'); }
 };

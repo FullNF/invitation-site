@@ -13,8 +13,11 @@
   --maroon:#6d1a2e; --maroon-dark:#4a0f1f; --gold:#c9a24b; --gold-light:#e8d7a8;
   --cream:#faf6ee; --paper:#f7f1e4; --ink:#5a4632;
 }
-*{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth}
+/* overflow-wrap+word-break: a long unbroken string (a name/hashtag with no
+ * spaces, at the character limits the builder allows) shouldn't be able to
+ * force horizontal scroll in the big display fonts below */
+*{margin:0;padding:0;box-sizing:border-box;overflow-wrap:break-word;word-break:break-word}
+html{scroll-behavior:smooth;overflow-x:hidden}
 body{font-family:'Cormorant Garamond',serif;background:var(--cream);color:var(--ink);overflow-x:hidden}
 body.locked{overflow:hidden;height:100vh}
 .cinzel{font-family:'Cinzel',serif}

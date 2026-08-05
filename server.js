@@ -171,6 +171,64 @@ const TEMPLATE_META = {
   }
 };
 
+/* ---- Server-side field validation ----
+ * The builder's maxlength/pattern attributes are a UX nicety only — a direct
+ * API call bypasses them completely, so genuine limits have to live here too.
+ * Kept a bit more generous than the client-side maxlength values to avoid
+ * rejecting anything the UI itself would have allowed through. */
+const phoneLooksValid = v => {
+  if (!v) return true; // optional field
+  const digits = String(v).replace(/\D/g, '');
+  return digits.length >= 10 && digits.length <= 15;
+};
+function validateInviteData(data) {
+  if (!data || typeof data !== 'object') return 'Invalid data';
+  const tooLong = (val, max, label) =>
+    (typeof val === 'string' && val.length > max) ? `${label} is too long (max ${max} characters)` : null;
+
+  const simpleLimits = {
+    groom: 60, bride: 60, venueName: 100, city: 60, hashtag: 50, groomFamily: 50, brideFamily: 50,
+    howWeMet: 100, perfectMorning: 100, description: 1000, customHashtag: 50, rsvpMessage: 300
+  };
+  for (const [key, max] of Object.entries(simpleLimits)) {
+    const err = tooLong(data[key], max, key);
+    if (err) return err;
+  }
+
+  if (!phoneLooksValid(data.whatsapp)) return 'WhatsApp number looks invalid';
+  if (!phoneLooksValid(data.rsvpWhatsapp)) return 'RSVP WhatsApp number looks invalid';
+
+  for (const side of ['groomParents', 'brideParents']) {
+    if (!data[side]) continue;
+    const err = tooLong(data[side].father, 60, `${side}.father`) || tooLong(data[side].mother, 60, `${side}.mother`);
+    if (err) return err;
+  }
+
+  if (data.events) {
+    for (const [key, ev] of Object.entries(data.events)) {
+      if (!ev) continue;
+      const err = tooLong(ev.name, 60, `${key}.name`) || tooLong(ev.venue, 100, `${key}.venue`) || tooLong(ev.desc, 200, `${key}.desc`);
+      if (err) return err;
+    }
+  }
+  if (Array.isArray(data.customEvents)) {
+    if (data.customEvents.length > 10) return 'Too many custom events';
+    for (const ev of data.customEvents) {
+      const err = tooLong(ev?.name, 60, 'customEvent.name') || tooLong(ev?.venue, 100, 'customEvent.venue') || tooLong(ev?.desc, 200, 'customEvent.desc');
+      if (err) return err;
+    }
+  }
+  if (data.infoCards) {
+    for (const key of ['address', 'parking', 'stayInfo']) {
+      const err = tooLong(data.infoCards[key]?.value, 500, `infoCards.${key}`);
+      if (err) return err;
+    }
+    const err = tooLong(data.infoCards.registry?.value, 300, 'infoCards.registry');
+    if (err) return err;
+  }
+  return null;
+}
+
 /* in-memory drafts + orders — short-lived by design (drafts GC after 2h, orders
  * live only between create-order and verify-payment), but still not immune to
  * the cross-instance issue above. Low-traffic risk for now; move to a real
@@ -354,6 +412,8 @@ app.post('/api/preview', async (req, res) => {
   try {
     const { template, data } = req.body || {};
     if (!TEMPLATE_META[template]) return res.status(400).json({ error: 'invalid template' });
+    const validationError = validateInviteData(data);
+    if (validationError) return res.status(400).json({ error: validationError });
     const token = nanoid(12);
     const media = await saveMedia('draft-' + token, data);
     drafts.set(token, { template, data, media, ts: Date.now() });
@@ -391,6 +451,8 @@ app.post('/api/create-order', async (req, res) => {
     if (!TEMPLATE_META[template]) {
       return res.status(400).json({ error: 'Invalid template' });
     }
+    const validationError = validateInviteData(data);
+    if (validationError) return res.status(400).json({ error: validationError });
 
     const amount = PRICES[template]; // already in paise
     if (amount < 100) {

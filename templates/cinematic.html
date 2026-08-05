@@ -27,8 +27,11 @@
   --glass:rgba(255,246,224,.06);
   --glass-brd:rgba(212,175,94,.28);
 }
-*{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:auto}
+/* overflow-wrap+word-break: a long unbroken string (a name/hashtag with no
+ * spaces, at the character limits the builder allows) shouldn't be able to
+ * force horizontal scroll in the big display fonts below */
+*{margin:0;padding:0;box-sizing:border-box;overflow-wrap:break-word;word-break:break-word}
+html{scroll-behavior:auto;overflow-x:hidden}
 body{
   font-family:'Cormorant Garamond',serif;color:var(--ink);
   background:
