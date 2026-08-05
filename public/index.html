@@ -56,6 +56,14 @@ body{font-family:'Cormorant Garamond',serif;background:var(--cream);color:var(--
 .btn.solid{background:linear-gradient(135deg,#86243b 0%,var(--maroon) 100%);color:#f6ecd8;box-shadow:0 8px 20px rgba(109,26,46,.3)}
 .btn.solid:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(109,26,46,.4)}
 
+.steps-section{max-width:900px;margin:0 auto;padding:10px 24px 60px;position:relative;z-index:3}
+.steps-row{display:flex;justify-content:space-between;align-items:flex-start;position:relative;gap:20px}
+.steps-row::before{content:'';position:absolute;top:27px;left:70px;right:70px;height:1px;background:linear-gradient(90deg,transparent,var(--gold) 12%,var(--gold) 88%,transparent)}
+.step-item{flex:1;text-align:center;position:relative;z-index:2;max-width:260px;margin:0 auto}
+.step-num{width:54px;height:54px;border-radius:50%;background:var(--cream);border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-family:'Cinzel',serif;font-size:15px;color:var(--maroon);box-shadow:0 4px 14px rgba(109,26,46,.08)}
+.step-item h4{font-family:'Great Vibes',cursive;font-size:25px;font-weight:400;color:var(--maroon);margin-bottom:8px}
+.step-item p{font-size:14.5px;color:#8a7355;line-height:1.55}
+
 footer{text-align:center;padding:40px 20px;font-size:14px;color:#98815f;font-style:italic;border-top:1px solid #ecdfc4;margin-top:60px;background:rgba(250,246,238,.5)}
 footer .credit{margin-top:14px;font-size:12.5px;letter-spacing:.05em;font-style:normal;opacity:.8}
 footer .credit a{color:var(--maroon);text-decoration:none;font-weight:600;border-bottom:1px solid rgba(109,26,46,.3);transition:.2s}
@@ -68,6 +76,9 @@ footer .credit a:hover{border-color:var(--maroon)}
   .card:hover{transform:none}
   .body{padding:22px}
   .features{grid-template-columns:1fr 1fr;font-size:11.5px}
+  .steps-row{flex-direction:column;gap:32px}
+  .steps-row::before{display:none}
+  .step-item{max-width:320px}
   footer{padding:32px 16px;margin-top:44px}
 }
 
@@ -90,6 +101,26 @@ footer .credit a:hover{border-color:var(--maroon)}
 </div>
 
 <div class="grid" id="grid"></div>
+
+<div class="steps-section">
+  <div class="steps-row">
+    <div class="step-item">
+      <div class="step-num">01</div>
+      <h4>Choose a Design</h4>
+      <p>Royal Heritage for timeless maroon &amp; gold, or Midnight Cinema for dark, glowing luxury — see both instantly.</p>
+    </div>
+    <div class="step-item">
+      <div class="step-num">02</div>
+      <h4>Personalise It</h4>
+      <p>Add your names, ceremonies, photos and your story. Preview it live before you decide.</p>
+    </div>
+    <div class="step-item">
+      <div class="step-num">03</div>
+      <h4>Share in Seconds</h4>
+      <p>One link, sent on WhatsApp. Opens beautifully on every guest's phone.</p>
+    </div>
+  </div>
+</div>
 
 <footer>
   Choose a design, fill your story, share one link with every guest. Simple, beautiful, forever.

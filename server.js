@@ -173,15 +173,6 @@ const TEMPLATE_META = {
   }
 };
 
-/* ---- Curated background music library ----
- * Files live in assets/sounds/library/ (static, version-controlled — these
- * never change per-invite so there's no reason to put them in Blob). Add an
- * MP3 there and one entry here to make it selectable in the builder.
- * IMPORTANT: only add tracks you actually have the rights to distribute —
- * hosting copyrighted commercial music here is a real legal risk. */
-const MUSIC_LIBRARY = [
-  // { id: 'track1', name: 'Soft Piano Romance', url: '/assets/sounds/library/track1.mp3' },
-];
 /* ---- Server-side field validation ----
  * The builder's maxlength/pattern attributes are a UX nicety only — a direct
  * API call bypasses them completely, so genuine limits have to live here too.
@@ -254,10 +245,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/templates', (req, res) => {
   res.json(Object.entries(TEMPLATE_META).map(([id, m]) => ({ id, ...m, amount: PRICES[id] })));
-});
-
-app.get('/api/music-library', (req, res) => {
-  res.json(MUSIC_LIBRARY);
 });
 
 /* demo with untouched dummy data */

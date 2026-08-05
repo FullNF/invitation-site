@@ -68,18 +68,6 @@ input.invalid:focus{box-shadow:0 0 0 3px rgba(179,65,63,.15)}
 .callus{display:block;text-align:center;margin-top:16px;padding:12px;border-radius:12px;background:#faf3e2;border:1px dashed var(--gold);font-size:14px;color:#8a6a25;text-decoration:none}
 .callus:active{opacity:.7}
 
-.music-choice{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
-.mc-opt{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid #e5d8bd;border-radius:12px;cursor:pointer;transition:.2s;font-size:15px;background:#fff}
-.mc-opt input{width:auto;margin:0}
-.mc-opt.sel{border-color:var(--gold);background:#faf3e2}
-.lib-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
-.lib-track{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1.5px solid #e5d8bd;border-radius:12px;cursor:pointer;transition:.2s;background:#fff}
-.lib-track.sel{border-color:var(--gold);background:#faf3e2}
-.lib-play{flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--gold);background:#fff;color:var(--maroon);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0}
-.lib-name{flex:1;font-size:15.5px}
-.lib-check{font-family:'Cinzel',serif;font-size:10.5px;letter-spacing:.06em;color:#a08a68;white-space:nowrap}
-.lib-track.sel .lib-check{color:var(--maroon);font-weight:700}
-
 .upload-overlay{display:none;position:fixed;inset:0;background:rgba(20,10,8,.85);z-index:200;flex-direction:column;align-items:center;justify-content:center;color:#f6ecd8;text-align:center;padding:20px}
 .upload-overlay.show{display:flex}
 .spinner{width:44px;height:44px;border:3px solid rgba(246,236,216,.25);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
@@ -140,7 +128,6 @@ let D = {
   showMusic:false,
   musicFile:null,
   musicName:'',
-  musicSource:'default', // 'default' | 'library' | 'custom'
   infoCards:{address:{on:false,value:''},parking:{on:false,value:''},registry:{on:false,value:''},stayInfo:{on:false,value:''}},
   rsvpWhatsapp:'',
   rsvpMessage:''
@@ -212,61 +199,6 @@ function showUploadOverlay(msg){
 }
 function hideUploadOverlay(){
   document.getElementById('uploadOverlay').classList.remove('show');
-}
-
-// fetched once, cached, and re-rendered from cache on every visit to this
-// step so switching tabs back and forth doesn't re-hit the network
-let libraryTracks = null;
-let currentPreviewAudio = null;
-async function loadLibraryIfNeeded(){
-  if (!document.getElementById('libraryList')) return;
-  if (libraryTracks === null) {
-    try { libraryTracks = await fetch('/api/music-library').then(r=>r.json()); }
-    catch (e) { libraryTracks = []; }
-  }
-  renderLibraryList();
-}
-function renderLibraryList(){
-  const listEl = document.getElementById('libraryList');
-  if (!listEl) return;
-  if (!libraryTracks || !libraryTracks.length) {
-    listEl.innerHTML = '<div class="hint">No songs in the library yet — try Upload Custom instead.</div>';
-    return;
-  }
-  listEl.innerHTML = libraryTracks.map(t => `
-    <div class="lib-track ${D.musicFile===t.url?'sel':''}" data-url="${t.url}" data-name="${t.name}">
-      <button type="button" class="lib-play" data-url="${t.url}">▶</button>
-      <span class="lib-name">${t.name}</span>
-      <span class="lib-check">${D.musicFile===t.url?'✓ Selected':'Select'}</span>
-    </div>`).join('');
-
-  listEl.querySelectorAll('.lib-play').forEach(btn=>{
-    btn.addEventListener('click', (e)=>{
-      e.stopPropagation();
-      const url = btn.dataset.url;
-      if (currentPreviewAudio && !currentPreviewAudio.paused && currentPreviewAudio.dataset && currentPreviewAudio.src.endsWith(url)) {
-        currentPreviewAudio.pause();
-        btn.textContent = '▶';
-        return;
-      }
-      if (currentPreviewAudio) currentPreviewAudio.pause();
-      listEl.querySelectorAll('.lib-play').forEach(b=>b.textContent='▶');
-      currentPreviewAudio = new Audio(url);
-      currentPreviewAudio.play().catch(()=>toast('Could not play preview'));
-      btn.textContent = '⏸';
-      currentPreviewAudio.addEventListener('ended', ()=>{ btn.textContent='▶'; });
-    });
-  });
-
-  listEl.querySelectorAll('.lib-track').forEach(row=>{
-    row.addEventListener('click', ()=>{
-      D.musicFile = row.dataset.url;
-      D.musicName = row.dataset.name;
-      D.showMusic = true;
-      save();
-      renderLibraryList(); // just refresh selection state, no full draw()
-    });
-  });
 }
 
 const STEPS = [
@@ -351,31 +283,15 @@ const STEPS = [
   </div>
 
   <div class="section-title">MUSIC (BACKGROUND)</div>
-  <div class="sub" style="margin:-6px 0 12px">Select your BG music</div>
-  <div class="music-choice">
-    <label class="mc-opt ${D.musicSource==='default'?'sel':''}">
-      <input type="radio" name="musicSource" value="default" ${D.musicSource==='default'?'checked':''}>
-      <span>🔇 Use Default Music</span>
-    </label>
-    <label class="mc-opt ${D.musicSource==='library'?'sel':''}">
-      <input type="radio" name="musicSource" value="library" ${D.musicSource==='library'?'checked':''}>
-      <span>🎵 Select From Our Library</span>
-    </label>
-    <label class="mc-opt ${D.musicSource==='custom'?'sel':''}">
-      <input type="radio" name="musicSource" value="custom" ${D.musicSource==='custom'?'checked':''}>
-      <span>⬆️ Upload Custom</span>
-    </label>
-  </div>
-
-  <div id="libraryDiv" style="display:${D.musicSource==='library'?'block':'none'}">
-    <div id="libraryList" class="lib-list"><div class="hint">Loading songs…</div></div>
-  </div>
-
-  <div id="musicDiv" style="display:${D.musicSource==='custom'?'block':'none'}">
+  <label style="display:flex;align-items:center;gap:10px">
+    <span>Upload background music?</span>
+    <label class="switch" style="margin:0"><input type="checkbox" data-toggle-music ${D.showMusic?'checked':''}><span></span></label>
+  </label>
+  <div id="musicDiv" style="display:${D.showMusic?'block':'none'}">
     <label>MUSIC FILE (MP3/WAV/OGG)</label>
     <input type="file" id="musicFile" accept="audio/*">
-    <div class="hint">Max 4.5MB</div>
-    ${D.musicSource==='custom' && D.musicFile ? `<div class="hint" style="color:#1faa53">✓ ${D.musicName||'Your music'} uploaded</div>` : ''}
+    <div class="hint">Optional — your invite plays silently until you upload one. Max 4.5MB.</div>
+    ${D.musicFile ? `<div class="hint" style="color:#1faa53">✓ ${D.musicName||'Your music'} uploaded</div>` : ''}
   </div>` },
 
 { title:'INFO CARDS & RSVP', sub:'Final details', html:()=>`
@@ -476,19 +392,13 @@ function bind(){
   document.querySelectorAll('input[data-toggle-gallery]').forEach(t=>{
     t.addEventListener('change', ()=>{ D.showGallery=t.checked; save(); draw(); });
   });
-  document.querySelectorAll('input[name="musicSource"]').forEach(r=>{
-    r.addEventListener('change', ()=>{
-      // switching tabs always starts fresh in the new one — otherwise a
-      // library pick carried into the Custom tab (or vice versa) shows a
-      // misleading "already uploaded/selected" confirmation for a file that
-      // doesn't actually belong to that tab
-      const switchedTab = D.musicSource !== r.value;
-      D.musicSource = r.value;
-      if (r.value === 'default' || switchedTab) { D.showMusic=false; D.musicFile=null; D.musicName=''; }
+  document.querySelectorAll('input[data-toggle-music]').forEach(t=>{
+    t.addEventListener('change', ()=>{
+      D.showMusic=t.checked;
+      if(!t.checked){ D.musicFile=null; D.musicName=''; }
       save(); draw();
     });
   });
-  if (D.musicSource === 'library') loadLibraryIfNeeded();
   document.querySelectorAll('input[data-toggle-info]').forEach(t=>{
     t.addEventListener('change', ()=>{ D.infoCards[t.dataset.toggleInfo].on=t.checked; save(); draw(); });
   });
