@@ -407,7 +407,7 @@ app.delete('/api/admin/draft/:token', requireAdmin, (req, res) => {
   res.json({ success: true, found: drafts.delete(req.params.token) });
 });
 
-const PREVIEW_TTL_MS = 72e5; // 2 hours
+const PREVIEW_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 /* save draft -> preview token */
 app.post('/api/preview', async (req, res) => {
